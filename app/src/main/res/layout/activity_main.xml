@@ -123,6 +123,28 @@
                 android:padding="8dp"
                 android:layout_marginTop="8dp"/>
 
+            <!-- Estado do root (preenchido pelo serviço) -->
+            <TextView
+                android:id="@+id/root_state"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Aguardando inicialização..."
+                android:textColor="#CCFFFFFF"
+                android:textSize="12sp"
+                android:padding="8dp"
+                android:layout_marginTop="4dp"/>
+
+            <!-- Botão principal de ativação do root -->
+            <Button
+                android:id="@+id/btn_activate"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Ativar KROOT"
+                android:textSize="16sp"
+                android:textColor="#0078D7"
+                android:layout_marginTop="16dp"
+                android:background="?android:attr/selectableItemBackground"/>
+
             <!-- BotÃ£o "Todos os Apps" -->
             <Button
                 android:id="@+id/btn_all_apps"

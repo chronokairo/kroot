@@ -1,4 +1,5 @@
 out/
+out-apk/
 *.o
 *.a
 *.so
