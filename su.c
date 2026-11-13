@@ -110,7 +110,12 @@ int main(int argc, char **argv) {
                 fprintf(stderr, "su: -c precisa de argumento\n");
                 return 2;
             }
-            cmd = argv[++i];
+            size_t need = strlen(argv[i + 1]) + 1;
+            if (need >= sizeof(cmd_buf)) {
+                fprintf(stderr, "su: comando longo demais\n");
+                return 2;
+            }
+            strcpy(cmd_buf, argv[++i]);
         } else if (!strcmp(a, "-l") || !strcmp(a, "--login")) {
             login = 1;
         } else if (!strcmp(a, "-u") || !strcmp(a, "--user")) {

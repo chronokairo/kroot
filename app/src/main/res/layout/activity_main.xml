@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#107C10">
+
+    <!-- Status bar simulada (topo) -->
+    <LinearLayout
+        android:id="@+id/status_bar"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical|start"
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp">
+
+        <TextView
+            android:id="@+id/clock"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="12:00"
+            android:textSize="20sp"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"/>
+
+        <TextView
+            android:id="@+id/date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="13 nov"
+            android:textSize="14sp"
+            android:textColor="#CCFFFFFF"
+            android:layout_marginLeft="8dp"/>
+    </LinearLayout>
+
+    <!-- Área de scroll com tiles -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/status_bar"
+        android:layout_above="@id/bottom_nav"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:id="@+id/tiles_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Tile do Ubuntu Chroot (destaque) -->
+            <LinearLayout
+                android:id="@+id/tile_ubuntu"
+                android:layout_width="match_parent"
+                android:layout_height="120dp"
+                android:orientation="horizontal"
+                android:background="#0078D7"
+                android:padding="12dp"
+                android:layout_marginBottom="16dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageView
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:src="@mipmap/ic_launcher"
+                    android:layout_gravity="center_vertical"/>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginLeft="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Ubuntu Chroot"
+                        android:textSize="20sp"
+                        android:textColor="#FFFFFF"
+                        android:textStyle="bold"/>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Terminal Linux integrado"
+                        android:textSize="14sp"
+                        android:textColor="#CCFFFFFF"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Título da seção de apps -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="APLICATIVOS"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#CCFFFFFF"
+                android:layout_marginBottom="8dp"
+                android:paddingLeft="4dp"/>
+
+            <!-- Container dos tiles dos apps do usuário -->
+            <GridLayout
+                android:id="@+id/apps_grid"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:columnCount="3"
+                android:rowCount="6"
+                android:alignmentMode="alignBounds"
+                android:paddingLeft="4dp"
+                android:paddingRight="4dp"/>
+
+            <!-- Botão "Todos os Apps" -->
+            <Button
+                android:id="@+id/btn_all_apps"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Todos os Aplicativos"
+                android:textSize="16sp"
+                android:layout_marginTop="16dp"/>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Barra de navegação inferior (estilo Windows 10 Mobile) -->
+    <LinearLayout
+        android:id="@+id/bottom_nav"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:layout_alignParentBottom="true"
+        android:orientation="horizontal"
+        android:background="#FFFFFF"
+        android:elevation="8dp"
+        android:paddingTop="4dp">
+
+        <Button
+            android:id="@+id/btn_ubuntu"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="Ubuntu"
+            android:textSize="12sp"
+            android:textColor="#0078D7"
+            android:background="?android:attr/selectableItemBackground"
+            android:gravity="center"/>
+
+        <Button
+            android:id="@+id/btn_apps"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="Apps"
+            android:textSize="12sp"
+            android:textColor="#333333"
+            android:background="?android:attr/selectableItemBackground"
+            android:gravity="center"/>
+
+        <Button
+            android:id="@+id/btn_status"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="Status"
+            android:textSize="12sp"
+            android:textColor="#333333"
+            android:background="?android:attr/selectableItemBackground"
+            android:gravity="center"/>
+    </LinearLayout>
+
+</LinearLayout>

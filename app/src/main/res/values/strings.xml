@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Kairos Root</string>
+    <string name="btn_terminal">Terminal Ubuntu Chroot</string>
+    <string name="btn_status">Status krootd</string>
+    <string name="btn_policy">Policy Root</string>
+    <string name="btn_logs">Logs</string>
+    <string name="btn_restart">Reiniciar krootd</string>
+    <string name="status_placeholder">Aguardando status...</string>
+</resources>
