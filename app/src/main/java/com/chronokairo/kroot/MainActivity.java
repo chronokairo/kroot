@@ -144,7 +144,6 @@ public class MainActivity extends Activity {
         tile.setBackgroundColor(Color.parseColor("#FFFFFF"));
         tile.setClickable(true);
         tile.setFocusable(true);
-        tile.setForeground(getDrawable(android.R.drawable.selectable_item_background));
 
         ImageView icon = new ImageView(this);
         icon.setImageDrawable(info.loadIcon(pm));

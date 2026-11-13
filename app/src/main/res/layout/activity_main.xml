@@ -33,7 +33,7 @@
             android:layout_marginLeft="8dp"/>
     </LinearLayout>
 
-    <!-- Área de scroll com tiles -->
+    <!-- Ãrea de scroll com tiles -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -91,7 +91,7 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Título da seção de apps -->
+            <!-- TÃ­tulo da seÃ§Ã£o de apps -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -102,7 +102,7 @@
                 android:layout_marginBottom="8dp"
                 android:paddingLeft="4dp"/>
 
-            <!-- Container dos tiles dos apps do usuário -->
+            <!-- Container dos tiles dos apps do usuÃ¡rio -->
             <GridLayout
                 android:id="@+id/apps_grid"
                 android:layout_width="match_parent"
@@ -123,7 +123,7 @@
                 android:padding="8dp"
                 android:layout_marginTop="8dp"/>
 
-            <!-- Botão "Todos os Apps" -->
+            <!-- BotÃ£o "Todos os Apps" -->
             <Button
                 android:id="@+id/btn_all_apps"
                 android:layout_width="match_parent"
@@ -135,7 +135,7 @@
         </LinearLayout>
     </ScrollView>
 
-    <!-- Barra de navegação inferior (estilo Windows 10 Mobile) -->
+    <!-- Barra de navegaÃ§Ã£o inferior (estilo Windows 10 Mobile) -->
     <LinearLayout
         android:id="@+id/bottom_nav"
         android:layout_width="match_parent"
@@ -180,4 +180,5 @@
             android:gravity="center"/>
     </LinearLayout>
 
-</LinearLayout>
+</RelativeLayout>
+
