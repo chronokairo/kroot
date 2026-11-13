@@ -159,38 +159,48 @@ static int authorize(uid_t peer, char *why, size_t whylen) {
 
 static void child_run(const char *slave_name, uid_t uid, gid_t gid,
                       const char *term, const char *cmd, unsigned flags,
-                      unsigned cols, unsigned rows) {
+                      unsigned cols, unsigned rows,
+                      int stdin_fd, int stdout_fd) {
     int slave;
     struct termios tio;
     struct winsize ws;
 
     setsid();
 
-    slave = open(slave_name, O_RDWR | O_NOCTTY);
-    if (slave < 0)
-        _exit(126);
+    if (flags & KF_PTY) {
+        slave = open(slave_name, O_RDWR | O_NOCTTY);
+        if (slave < 0)
+            _exit(126);
 
-    ioctl(slave, TIOCSCTTY, 0);
+        ioctl(slave, TIOCSCTTY, 0);
 
-    if (tcgetattr(slave, &tio) == 0) {
-        tio.c_oflag &= ~(ONLCR | OPOST);
-        tio.c_iflag &= ~(ICRNL | INLCR | IXON);
-        tio.c_lflag |= ECHO | ICANON | ISIG | IEXTEN;
-        tcsetattr(slave, TCSANOW, &tio);
+        if (tcgetattr(slave, &tio) == 0) {
+            tio.c_oflag &= ~(ONLCR | OPOST);
+            tio.c_iflag &= ~(ICRNL | INLCR | IXON);
+            tio.c_lflag |= ECHO | ICANON | ISIG | IEXTEN;
+            tcsetattr(slave, TCSANOW, &tio);
+        }
+
+        if (cols > 0 && rows > 0) {
+            memset(&ws, 0, sizeof(ws));
+            ws.ws_col = (unsigned short)cols;
+            ws.ws_row = (unsigned short)rows;
+            ioctl(slave, TIOCSWINSZ, &ws);
+        }
+
+        dup2(slave, STDIN_FILENO);
+        dup2(slave, STDOUT_FILENO);
+        dup2(slave, STDERR_FILENO);
+        if (slave > STDERR_FILENO)
+            close(slave);
+    } else {
+        if (stdin_fd >= 0)
+            dup2(stdin_fd, STDIN_FILENO);
+        if (stdout_fd >= 0) {
+            dup2(stdout_fd, STDOUT_FILENO);
+            dup2(stdout_fd, STDERR_FILENO);
+        }
     }
-
-    if (cols > 0 && rows > 0) {
-        memset(&ws, 0, sizeof(ws));
-        ws.ws_col = (unsigned short)cols;
-        ws.ws_row = (unsigned short)rows;
-        ioctl(slave, TIOCSWINSZ, &ws);
-    }
-
-    dup2(slave, STDIN_FILENO);
-    dup2(slave, STDOUT_FILENO);
-    dup2(slave, STDERR_FILENO);
-    if (slave > STDERR_FILENO)
-        close(slave);
 
     setenv("PATH", "/sbin:/system/sbin:/system/bin:/system/xbin:/data/local/xbin:/data/local/bin", 1);
     setenv("TERM", term[0] ? term : "xterm-256color", 1);
@@ -280,13 +290,24 @@ static void handle_client(int cfd, struct ucred cr) {
         goto out;
     }
 
-    master = posix_openpt(O_RDWR | O_NOCTTY);
-    if (master < 0 || grantpt(master) != 0 || unlockpt(master) != 0) {
-        deny(cfd, "falha ao criar pty");
-        goto out;
-    }
+    master = -1;
+    int stdin_pipe[2] = {-1, -1};
+    int stdout_pipe[2] = {-1, -1};
 
-    snprintf(slave_name, sizeof(slave_name), "%s", ptsname(master));
+    if (flags & KF_PTY) {
+        master = posix_openpt(O_RDWR | O_NOCTTY);
+        if (master < 0 || grantpt(master) != 0 || unlockpt(master) != 0) {
+            deny(cfd, "falha ao criar pty");
+            goto out;
+        }
+        snprintf(slave_name, sizeof(slave_name), "%s", ptsname(master));
+    } else {
+        if (pipe(stdin_pipe) != 0 || pipe(stdout_pipe) != 0) {
+            deny(cfd, "falha ao criar pipes");
+            goto out;
+        }
+        snprintf(slave_name, sizeof(slave_name), "/dev/null");
+    }
 
     if (pipe(sp) != 0) {
         deny(cfd, "falha ao criar pipe");
@@ -301,9 +322,18 @@ static void handle_client(int cfd, struct ucred cr) {
 
     if (pid == 0) {
         close(cfd);
-        close(master);
+        if (master >= 0)
+            close(master);
+        if (stdin_pipe[0] >= 0)
+            close(stdin_pipe[0]);
+        if (stdin_pipe[1] >= 0)
+            close(stdin_pipe[1]);
+        if (stdout_pipe[0] >= 0)
+            close(stdout_pipe[0]);
         close(sp[0]);
-        child_run(slave_name, (uid_t)uid, (gid_t)gid, term, cmd, flags, cols, rows);
+        child_run(slave_name, (uid_t)uid, (gid_t)gid, term, cmd, flags, cols, rows,
+                  flags & KF_PTY ? -1 : stdin_pipe[1],
+                  flags & KF_PTY ? -1 : stdout_pipe[1]);
         _exit(127);
     }
 
@@ -313,17 +343,31 @@ static void handle_client(int cfd, struct ucred cr) {
     }
 
     {
-        int fds[2] = {master, sp[0]};
+        int fds[2];
+        if (flags & KF_PTY) {
+            fds[0] = master;
+            fds[1] = sp[0];
+        } else {
+            fds[0] = stdout_pipe[0];
+            fds[1] = sp[0];
+        }
         if (k_send_fds(cfd, "F", 1, fds, 2) != 1) {
             logmsg("falha ao enviar fds (peer=%u)", (unsigned)cr.uid);
             goto kill_child;
         }
     }
 
-    close(master);
+    if (master >= 0)
+        close(master);
     master = -1;
     close(sp[0]);
     sp[0] = -1;
+    if (! (flags & KF_PTY)) {
+        close(stdin_pipe[1]);
+        stdin_pipe[1] = -1;
+        close(stdout_pipe[0]);
+        stdout_pipe[0] = -1;
+    }
 
     logmsg("EXEC peer=%u(pid=%d) uid=%u gid=%u cmd='%s'",
            (unsigned)cr.uid, (int)cr.pid, uid, gid, cmd[0] ? cmd : "(shell)");

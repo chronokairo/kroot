@@ -86,6 +86,7 @@ int main(int argc, char **argv) {
     gid_t gid = 0;
     int login = 0;
     int has_user = 0;
+    int no_pty = 0;
     int fd;
     char hdr[256];
     char reply[256];
@@ -116,6 +117,7 @@ int main(int argc, char **argv) {
                 return 2;
             }
             strcpy(cmd_buf, argv[++i]);
+            cmd = cmd_buf;
         } else if (!strcmp(a, "-l") || !strcmp(a, "--login")) {
             login = 1;
         } else if (!strcmp(a, "-u") || !strcmp(a, "--user")) {
@@ -137,6 +139,8 @@ int main(int argc, char **argv) {
         } else if (!strcmp(a, "--stop")) {
             execl("/data/local/xbin/krootd", "krootd", "--stop", (char *)NULL);
             return 1;
+        } else if (!strcmp(a, "--no-pty")) {
+            no_pty = 1;
         } else if (!strcmp(a, "--status")) {
             fd = kroot_connect();
             if (fd < 0) {
@@ -145,9 +149,6 @@ int main(int argc, char **argv) {
             }
             close(fd);
             printf("krootd: online\n");
-            return 0;
-        } else if (!strcmp(a, "-h") || !strcmp(a, "--help")) {
-            usage();
             return 0;
         } else if (a[0] == '-') {
             fprintf(stderr, "su: opcao desconhecida: %s\n", a);
@@ -199,7 +200,7 @@ int main(int argc, char **argv) {
     }
 
     {
-        unsigned flags = KF_PTY | (login ? KF_LOGIN : 0);
+        unsigned flags = (no_pty ? 0u : KF_PTY) | (login ? KF_LOGIN : 0);
         size_t clen = cmd ? strlen(cmd) : 0;
         int n = snprintf(hdr, sizeof(hdr), "EXEC %u %u %u %u %u %u %u\n",
                          flags, (unsigned)uid, (unsigned)gid, cols, rows,

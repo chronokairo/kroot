@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Cor de acento Windows 10 Mobile -->
+        <item name="android:colorAccent">#0078D7</item>
+        <item name="android:colorPrimary">#101010</item>
+        <item name="android:colorPrimaryDark">#0A0A0A</item>
+        <item name="android:windowBackground">#101010</item>
+    </style>
