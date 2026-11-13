@@ -19,7 +19,7 @@ public class KrootService extends Service {
     private static final String CHANNEL_ID = "kroot_channel";
     private static final int NOTIFICATION_ID = 1;
 
-    private static final String SU_KROOT = "/data/local/tmp/kroot-build/su.kroot";
+    private static final String SU_KROOT = "/data/local/xbin/su";
     private static final String CHROOT = "/data/local/ubuntu";
     private static final String POLICY_DIR = "/data/local/kroot";
 

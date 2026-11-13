@@ -26,9 +26,8 @@ import java.util.List;
 
 public class MainActivity extends Activity {
 
-    // TODO: validar o caminho de instalação no dispositivo alvo.
-    // README/docs indicam /data/local/xbin/su.kroot; o deploy atual usa /data/local/tmp/kroot-build/su.kroot.
-    private static final String SU_KROOT = "/data/local/tmp/kroot-build/su.kroot";
+    // Caminho do cliente su instalado pelo install-device.sh (/data/local/xbin/su).
+    private static final String SU_KROOT = "/data/local/xbin/su";
     private static final String CHROOT = "/data/local/ubuntu";
     private static final String POLICY_DIR = "/data/local/kroot";
 
@@ -89,6 +88,9 @@ public class MainActivity extends Activity {
 
         // Status inicial
         checkStatus();
+
+        // Inicia o serviço do krootd (root controller) se ainda não estiver rodando
+        startService(new Intent(this, KrootService.class));
     }
 
     private void updateClock() {

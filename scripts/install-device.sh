@@ -21,7 +21,18 @@ chmod 0600 "$RUN/policy.tsv"
 grep -q '^2000' "$RUN/policy.tsv" || printf '2000\tallow\tshell\t0\n' >> "$RUN/policy.tsv"
 grep -q '^10246' "$RUN/policy.tsv" || printf '10246\tallow\ttermux\t0\n' >> "$RUN/policy.tsv"
 
-# sobe o daemon se ainda nao estiver no ar
+# Autorizar o pacote Kairos Root (com.chronokairo.kroot) na policy.
+# Descobre o UID dinamicamente via pm. Se falhar, tenta 10260 (exemplo).
+KROOT_UID=$(pm list packages -U com.chronokairo.kroot 2>/dev/null | sed -n 's/.*uid:\([0-9]*\).*/\1/p')
+if [ -n "$KROOT_UID" ]; then
+    grep -q "^${KROOT_UID}" "$RUN/policy.tsv" || \
+        printf "${KROOT_UID}\tallow\tcom.chronokairo.kroot\t0\n" >> "$RUN/policy.tsv"
+else
+    grep -q '^10260' "$RUN/policy.tsv" || \
+        printf '10260\tallow\tcom.chronokairo.kroot\t0\n' >> "$RUN/policy.tsv"
+fi
+
+# sobe o daemon se ainda nao estiver no ar (só funciona se executado como root)
 if ! "$BIN/krootd" --status; then
     "$BIN/krootd" --daemon
     sleep 1

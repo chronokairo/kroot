@@ -55,10 +55,15 @@ static int resolve_uid(const char *s, uid_t *out) {
 static void bootstrap(void) {
     fprintf(stderr, "kroot: daemon ausente, subindo...\n");
 
-    if (getuid() == 0)
+    if (getuid() == 0) {
+        /* Ja somos root: iniciar o krootd diretamente. */
         (void)system("/data/local/xbin/krootd --daemon");
-    else
-        (void)system("echo '/data/local/xbin/krootd --daemon' | /data/local/tmp/su >/dev/null 2>&1");
+    } else {
+        /* Nao somos root: precisa de um su com privilégos ja instalado
+           (ex.: deixado por uma execucao anterior do exploit Mali). */
+        (void)system("echo '/data/local/xbin/krootd --daemon' | "
+                     "/data/local/xbin/su >/dev/null 2>&1");
+    }
 
     for (int i = 0; i < 40; i++) {
         int fd = kroot_connect();
