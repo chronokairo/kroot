@@ -54,19 +54,23 @@ public class DiagnosticEngine {
         }
         r.log.append("UID atual: ").append(r.androidUid).append(" (root=").append(r.isRoot).append(")\n");
 
-        // Verificar binários
-        r.maliBinaryExists = fileExists("/data/local/tmp/mali_kroot");
-        r.maliBinaryExecutable = canExecute("/data/local/tmp/mali_kroot");
+        // Verificar binários (caminhos via BinaryInstaller - diretório privado do app)
+        String maliPath = BinaryInstaller.MALI_PATH;
+        String krootdPath = BinaryInstaller.KROOTD_PATH;
+        String suPath = BinaryInstaller.SU_PATH;
+
+        r.maliBinaryExists = fileExists(maliPath != null ? maliPath : "");
+        r.maliBinaryExecutable = canExecute(maliPath != null ? maliPath : "");
         r.log.append("mali_kroot existe=").append(r.maliBinaryExists)
                 .append(" executável=").append(r.maliBinaryExecutable).append("\n");
 
-        r.krootdBinaryExists = fileExists("/data/local/xbin/krootd");
-        r.krootdBinaryExecutable = canExecute("/data/local/xbin/krootd");
+        r.krootdBinaryExists = fileExists(krootdPath != null ? krootdPath : "");
+        r.krootdBinaryExecutable = canExecute(krootdPath != null ? krootdPath : "");
         r.log.append("krootd existe=").append(r.krootdBinaryExists)
                 .append(" executável=").append(r.krootdBinaryExecutable).append("\n");
 
-        r.suBinaryExists = fileExists("/data/local/xbin/su");
-        r.suBinaryExecutable = canExecute("/data/local/xbin/su");
+        r.suBinaryExists = fileExists(suPath != null ? suPath : "");
+        r.suBinaryExecutable = canExecute(suPath != null ? suPath : "");
         r.log.append("su existe=").append(r.suBinaryExists)
                 .append(" executável=").append(r.suBinaryExecutable).append("\n");
 

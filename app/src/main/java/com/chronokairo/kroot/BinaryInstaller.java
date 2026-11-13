@@ -8,35 +8,51 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 
 /**
- * BinaryInstaller - Unified binary management using /data/local/xbin/ as the single pattern.
+ * BinaryInstaller - Unified binary management using app private data directory.
  *
  * Responsibilities:
  *  - Embed su/krootd/krootctl/mali_kroot in res/raw
- *  - Copy them to /data/local/xbin/ on first run
+ *  - Copy them to app private files dir on first run
  *  - Run Mali UAF exploit to obtain UID 0
- *  - Install binaries to /data/local/xbin/ with root ownership
  *  - Start krootd as root daemon
- *  - All paths use /data/local/xbin/ exclusively
+ *  - All binaries stored in app private data directory
  */
 public class BinaryInstaller {
 
     private static final String TAG = "BinaryInstaller";
 
-    // Single pattern: /data/local/xbin/ for everything
-    public static final String XBIN_DIR = "/data/local/xbin";
-    public static final String SU_PATH = XBIN_DIR + "/su";
-    public static final String KROOTD_PATH = XBIN_DIR + "/krootd";
-    public static final String KROOTCTL_PATH = XBIN_DIR + "/krootctl";
-    public static final String MALI_PATH = XBIN_DIR + "/mali_kroot";
+    // Use app private data directory
+    private static BinaryInstaller instance;
+    private String BIN_DIR;
+    public static String SU_PATH;
+    public static String KROOTD_PATH;
+    public static String KROOTCTL_PATH;
+    public static String MALI_PATH;
 
     private final Context context;
     private final RootState state;
     private final LogManager logManager;
 
-    public BinaryInstaller(Context context, RootState state, LogManager logManager) {
+    public static BinaryInstaller getInstance(Context context, RootState state, LogManager logManager) {
+        if (instance == null) {
+            instance = new BinaryInstaller(context, state, logManager);
+        }
+        return instance;
+    }
+
+    private BinaryInstaller(Context context, RootState state, LogManager logManager) {
         this.context = context;
         this.state = state;
         this.logManager = logManager;
+        File binDir = new File(context.getFilesDir(), "bin");
+        if (!binDir.exists()) {
+            binDir.mkdirs();
+        }
+        BIN_DIR = binDir.getAbsolutePath();
+        SU_PATH = BIN_DIR + "/su";
+        KROOTD_PATH = BIN_DIR + "/krootd";
+        KROOTCTL_PATH = BIN_DIR + "/krootctl";
+        MALI_PATH = BIN_DIR + "/mali_kroot";
     }
 
     /**
@@ -44,11 +60,11 @@ public class BinaryInstaller {
      * Returns true if root is available and krootd is online.
      */
     public boolean installAndUse() {
-        logManager.i(TAG, "Starting install-and-use flow (pattern: " + XBIN_DIR + ")");
+        logManager.i(TAG, "Starting install-and-use flow (private data: " + BIN_DIR + ")");
 
-        // Step 1: Copy embedded binaries to /data/local/xbin/
+        // Step 1: Copy embedded binaries to app private dir
         if (!copyEmbeddedBinaries()) {
-            logManager.e(TAG, "Failed to copy embedded binaries to " + XBIN_DIR);
+            logManager.e(TAG, "Failed to copy embedded binaries to " + BIN_DIR);
             return false;
         }
 
@@ -61,13 +77,7 @@ public class BinaryInstaller {
 
         logManager.i(TAG, "UID 0 obtained via Mali UAF");
 
-        // Step 3: Install binaries to /data/local/xbin/ with root ownership
-        if (!installBinariesAsRoot()) {
-            logManager.e(TAG, "Failed to install binaries to " + XBIN_DIR);
-            return false;
-        }
-
-        // Step 4: Start krootd as root daemon
+        // Step 3: Start krootd as root daemon
         if (!startKrootdAsRoot()) {
             logManager.e(TAG, "Failed to start krootd");
             return false;
@@ -79,13 +89,13 @@ public class BinaryInstaller {
     }
 
     /**
-     * Copy embedded binaries from res/raw to /data/local/xbin/
+     * Copy embedded binaries from res/raw to app private bin dir
      */
     private boolean copyEmbeddedBinaries() {
-        File xbinDir = new File(XBIN_DIR);
-        if (!xbinDir.exists()) {
-            if (!xbinDir.mkdirs()) {
-                logManager.e(TAG, "Cannot create " + XBIN_DIR);
+        File binDir = new File(BIN_DIR);
+        if (!binDir.exists()) {
+            if (!binDir.mkdirs()) {
+                logManager.e(TAG, "Cannot create " + BIN_DIR);
                 return false;
             }
         }
@@ -102,7 +112,7 @@ public class BinaryInstaller {
         new File(KROOTD_PATH).setExecutable(true, false);
         new File(KROOTCTL_PATH).setExecutable(true, false);
 
-        logManager.i(TAG, "Binaries copied to " + XBIN_DIR);
+        logManager.i(TAG, "Binaries copied to " + BIN_DIR);
         return ok;
     }
 
@@ -161,50 +171,6 @@ public class BinaryInstaller {
     }
 
     /**
-     * Install binaries to /data/local/xbin/ with root ownership using su.
-     */
-    private boolean installBinariesAsRoot() {
-        if (!hasRoot()) {
-            logManager.e(TAG, "No root - cannot install binaries as root");
-            return false;
-        }
-
-        logManager.i(TAG, "Installing binaries to " + XBIN_DIR + " as root");
-        try {
-            String cmd = "cp " + MALI_PATH + " " + XBIN_DIR + "/mali_kroot && " +
-                         "cp " + SU_PATH + " " + XBIN_DIR + "/su && " +
-                         "cp " + KROOTD_PATH + " " + XBIN_DIR + "/krootd && " +
-                         "cp " + KROOTCTL_PATH + " " + XBIN_DIR + "/krootctl && " +
-                         "chown root:root " + XBIN_DIR + "/mali_kroot " +
-                                     XBIN_DIR + "/su " +
-                                     XBIN_DIR + "/krootd " +
-                                     XBIN_DIR + "/krootctl && " +
-                         "chmod 0755 " + XBIN_DIR + "/mali_kroot " +
-                                     XBIN_DIR + "/su " +
-                                     XBIN_DIR + "/krootd " +
-                                     XBIN_DIR + "/krootctl";
-
-            Process p = new ProcessBuilder(SU_PATH, "-c", cmd)
-                    .redirectErrorStream(true)
-                    .start();
-            p.waitFor();
-
-            java.io.BufferedReader br = new java.io.BufferedReader(
-                    new java.io.InputStreamReader(p.getInputStream()));
-            String line;
-            while ((line = br.readLine()) != null) {
-                logManager.d(TAG, "install: " + line);
-            }
-
-            logManager.i(TAG, "Binaries installed to " + XBIN_DIR + " as root");
-            return true;
-        } catch (Exception e) {
-            logManager.e(TAG, "Error installing binaries as root", e);
-            return false;
-        }
-    }
-
-    /**
      * Start krootd as root daemon via su.
      */
     private boolean startKrootdAsRoot() {
@@ -215,7 +181,7 @@ public class BinaryInstaller {
 
         logManager.i(TAG, "Starting krootd as root daemon");
         try {
-            Process p = new ProcessBuilder(SU_PATH, "-c", KROOTD_PATH + " --daemon")
+            Process p = new ProcessBuilder(KROOTD_PATH, "--daemon")
                     .redirectErrorStream(true)
                     .start();
             p.waitFor();
@@ -242,7 +208,7 @@ public class BinaryInstaller {
      */
     public boolean hasRoot() {
         try {
-            Process p = new ProcessBuilder(SU_PATH, "-c", "id -u")
+            Process p = new ProcessBuilder("id", "-u")
                     .redirectErrorStream(true)
                     .start();
             java.io.BufferedReader br = new java.io.BufferedReader(
@@ -260,7 +226,7 @@ public class BinaryInstaller {
      */
     public boolean isKrootdOnline() {
         try {
-            Process p = new ProcessBuilder(SU_PATH, "--status")
+            Process p = new ProcessBuilder(KROOTD_PATH, "--status")
                     .redirectErrorStream(true)
                     .start();
             java.io.BufferedReader br = new java.io.BufferedReader(
@@ -274,6 +240,15 @@ public class BinaryInstaller {
             return false;
         }
     }
+
+    /**
+     * Getter methods for binary paths.
+     */
+    public String getBinDir() { return BIN_DIR; }
+    public String getSuPath() { return SU_PATH; }
+    public String getKrootdPath() { return KROOTD_PATH; }
+    public String getKrootctlPath() { return KROOTCTL_PATH; }
+    public String getMaliPath() { return MALI_PATH; }
 
     /**
      * Stop krootd.

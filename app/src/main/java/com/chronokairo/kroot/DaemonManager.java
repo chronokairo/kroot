@@ -8,25 +8,29 @@ import android.util.Log;
  * O daemon SOMENTE pode ser iniciado com UID 0. O DaemonManager delega a
  * inicialização ao RootProvider (MaliUafJavaProvider), que garante a
  * elevação de privilégios antes de executar o krootd.
+ *
+ * Todos os caminhos de binário vêm do BinaryInstaller (diretório privado do app).
  */
 public class DaemonManager {
 
     private static final String TAG = "DaemonManager";
-    private static final String KROOTD_PATH = "/data/local/xbin/krootd";
-    private static final String SU_PATH = "/data/local/xbin/su";
 
     private final RootState state;
     private final RootProvider provider;
+    private final String krootdPath;
+    private final String suPath;
     private volatile boolean running = false;
 
-    public DaemonManager(RootState state, RootProvider provider) {
+    public DaemonManager(RootState state, RootProvider provider, BinaryInstaller installer) {
         this.state = state;
         this.provider = provider;
+        this.krootdPath = installer.getKrootdPath();
+        this.suPath = installer.getSuPath();
     }
 
     public boolean isOnline() {
         try {
-            Process p = new ProcessBuilder(SU_PATH, "--status")
+            Process p = new ProcessBuilder(suPath, "--status")
                     .redirectErrorStream(true)
                     .start();
             java.io.BufferedReader br = new java.io.BufferedReader(
@@ -62,8 +66,8 @@ public class DaemonManager {
             return false;
         }
 
-        if (!new java.io.File(KROOTD_PATH).exists()) {
-            Log.e(TAG, "krootd não encontrado em " + KROOTD_PATH);
+        if (!new java.io.File(krootdPath).exists()) {
+            Log.e(TAG, "krootd não encontrado em " + krootdPath);
             state.setDaemonStatus(RootState.DaemonStatus.ERROR);
             return false;
         }
@@ -111,7 +115,7 @@ public class DaemonManager {
 
     public boolean stop() {
         try {
-            Process p = new ProcessBuilder(SU_PATH, "-c", KROOTD_PATH + " --stop")
+            Process p = new ProcessBuilder(suPath, "-c", krootdPath + " --stop")
                     .redirectErrorStream(true)
                     .start();
             p.waitFor();

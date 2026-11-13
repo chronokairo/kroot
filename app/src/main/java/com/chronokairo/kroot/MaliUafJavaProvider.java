@@ -16,27 +16,32 @@ import java.nio.ByteBuffer;
  * Estratégia (em ordem):
  *  1. Exploit Java puro (abre /dev/mali0, pressiona memória, tenta UAF via leitura/gravação)
  *  2. Fallback: copia o binário mali_kroot empacotado no APK (res/raw) para
- *     /data/local/xbin/mali_kroot, dá permissão de execução e roda
+ *     o diretório privado do app, dá permissão de execução e roda
  *
  * Se qualquer etapa obtiver UID 0, inicia o krootd.
+ *
+ * Todos os caminhos de binário vêm do BinaryInstaller (diretório privado do app).
  */
 public class MaliUafJavaProvider implements RootProvider {
 
     private static final String TAG = "MaliUafJavaProvider";
 
     private static final String MALI_DEVICE = "/dev/mali0";
-    private static final String KROOTD_PATH = "/data/local/xbin/krootd";
-    private static final String SU_PATH = "/data/local/xbin/su";
-    private static final String MALI_TMP_PATH = "/data/local/xbin/mali_kroot";
 
     // Tamanho do pressure buffer (~128 MB, como no exploit original)
     private static final long PRESSURE_SIZE = 128L * 1024L * 1024L;
     private static final int CHUNK_SIZE = 30 * 1024 * 1024; // 30 MB por chunk
 
     private final Context context;
+    private final String krootdPath;
+    private final String suPath;
+    private final String maliPath;
 
-    public MaliUafJavaProvider(Context context) {
+    public MaliUafJavaProvider(Context context, BinaryInstaller installer) {
         this.context = context;
+        this.krootdPath = installer.getKrootdPath();
+        this.suPath = installer.getSuPath();
+        this.maliPath = installer.getMaliPath();
     }
 
     @Override
@@ -118,16 +123,17 @@ public class MaliUafJavaProvider implements RootProvider {
     }
 
     /**
-     * Fallback: copia o binário mali_kroot do res/raw para /data/local/tmp/,
+     * Fallback: copia o binário mali_kroot do res/raw para
+     * o diretório privado do app,
      * dá permissão de execução e roda.
      */
     private boolean tryPackagedBinary() {
-        File tmp = new File(MALI_TMP_PATH);
+        File tmp = new File(maliPath);
 
         // Copiar do raw para o dispositivo (se ainda não existir ou for antigo)
         if (!tmp.exists() || !tmp.canExecute()) {
-            Log.i(TAG, "Copiando mali_kroot do APK para " + MALI_TMP_PATH);
-            if (!copyRawToDevice(R.raw.mali_kroot, MALI_TMP_PATH)) {
+            Log.i(TAG, "Copiando mali_kroot do APK para " + maliPath);
+            if (!copyRawToDevice(R.raw.mali_kroot, maliPath)) {
                 Log.e(TAG, "Falha ao copiar mali_kroot do APK");
                 return false;
             }
@@ -139,9 +145,9 @@ public class MaliUafJavaProvider implements RootProvider {
             return false;
         }
 
-        Log.i(TAG, "Executando " + MALI_TMP_PATH);
+        Log.i(TAG, "Executando " + maliPath);
         try {
-            Process p = new ProcessBuilder(MALI_TMP_PATH)
+            Process p = new ProcessBuilder(maliPath)
                     .redirectErrorStream(true)
                     .start();
 
@@ -279,15 +285,15 @@ public class MaliUafJavaProvider implements RootProvider {
             return false;
         }
 
-        File krootd = new File(KROOTD_PATH);
+        File krootd = new File(krootdPath);
         if (!krootd.exists() || !krootd.canExecute()) {
-            Log.e(TAG, "krootd não disponível em " + KROOTD_PATH);
+            Log.e(TAG, "krootd não disponível em " + krootdPath);
             return false;
         }
 
         try {
             Log.i(TAG, "Iniciando krootd como root (UID 0)");
-            Process p = new ProcessBuilder(KROOTD_PATH, "--daemon")
+            Process p = new ProcessBuilder(krootdPath, "--daemon")
                     .redirectErrorStream(true)
                     .start();
             p.waitFor();
@@ -310,7 +316,7 @@ public class MaliUafJavaProvider implements RootProvider {
     @Override
     public boolean isKrootdOnline() {
         try {
-            Process p = new ProcessBuilder(SU_PATH, "--status")
+            Process p = new ProcessBuilder(suPath, "--status")
                     .redirectErrorStream(true)
                     .start();
             java.io.BufferedReader br = new java.io.BufferedReader(
@@ -328,7 +334,7 @@ public class MaliUafJavaProvider implements RootProvider {
     @Override
     public boolean stopKrootd() {
         try {
-            Process p = new ProcessBuilder(SU_PATH, "-c", KROOTD_PATH + " --stop")
+            Process p = new ProcessBuilder(suPath, "-c", krootdPath + " --stop")
                     .redirectErrorStream(true)
                     .start();
             p.waitFor();

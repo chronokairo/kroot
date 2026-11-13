@@ -19,7 +19,7 @@ import android.util.Log;
  *  - Maintain foreground notification
  *  - Watchdog for periodic verification
  *
- * All binary paths use /data/local/xbin/ exclusively.
+ * All binary paths use app private data directory via BinaryInstaller.
  */
 public class KrootService extends Service {
 
@@ -42,10 +42,10 @@ public class KrootService extends Service {
         super.onCreate();
         rootState = new RootState();
         logManager = new LogManager();
-        rootProvider = new MaliUafJavaProvider(this);
-        binaryInstaller = new BinaryInstaller(this, rootState, logManager);
-        daemonManager = new DaemonManager(rootState, rootProvider);
-        serviceManager = new ServiceManager(rootState);
+        binaryInstaller = BinaryInstaller.getInstance(this, rootState, logManager);
+        rootProvider = new MaliUafJavaProvider(this, binaryInstaller);
+        daemonManager = new DaemonManager(rootState, rootProvider, binaryInstaller);
+        serviceManager = new ServiceManager(rootState, binaryInstaller);
 
         rootState.setAndroidUid(android.os.Process.myUid());
         logManager.i(TAG, "Service created. UID=" + rootState.getAndroidUid());

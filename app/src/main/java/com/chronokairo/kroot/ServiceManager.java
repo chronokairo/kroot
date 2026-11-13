@@ -2,21 +2,31 @@ package com.chronokairo.kroot;
 
 import android.util.Log;
 
+import java.io.File;
+
 /**
  * Gerencia serviços auxiliares: chroot Ubuntu, SSH, ttyd.
  * Separado do DaemonManager para seguir responsabilidade única.
+ *
+ * Todos os caminhos usam o diretório privado do app via BinaryInstaller.
  */
 public class ServiceManager {
 
     private static final String TAG = "ServiceManager";
-    private static final String SU_PATH = "/data/local/xbin/su";
-    private static final String CHROOT = "/data/local/ubuntu";
-    private static final String POLICY_DIR = "/data/local/kroot";
+    private final String suPath;
+    private final String chrootDir;
+    private final String policyDir;
 
     private final RootState state;
 
-    public ServiceManager(RootState state) {
+    public ServiceManager(RootState state, BinaryInstaller installer) {
         this.state = state;
+        this.suPath = installer.getSuPath();
+        File filesDir = installer.getBinDir().endsWith("/bin") 
+                ? new File(installer.getBinDir()).getParentFile() 
+                : new File(installer.getBinDir());
+        this.chrootDir = new File(filesDir, "ubuntu").getAbsolutePath();
+        this.policyDir = new File(filesDir, "kroot").getAbsolutePath();
     }
 
     /**
@@ -25,7 +35,7 @@ public class ServiceManager {
      */
     private boolean hasRoot() {
         try {
-            Process p = new ProcessBuilder(SU_PATH, "-c", "id -u")
+            Process p = new ProcessBuilder(suPath, "-c", "id -u")
                     .redirectErrorStream(true)
                     .start();
             java.io.BufferedReader br = new java.io.BufferedReader(
@@ -64,21 +74,21 @@ public class ServiceManager {
 
         Log.i(TAG, "Montando chroot Ubuntu...");
         String[] mounts = {
-                "mount -t proc proc " + CHROOT + "/proc 2>/dev/null",
-                "mount -t sysfs sys " + CHROOT + "/sys 2>/dev/null",
-                "mount --bind /dev " + CHROOT + "/dev 2>/dev/null",
-                "mount --bind /dev/pts " + CHROOT + "/dev/pts 2>/dev/null",
-                "mount --bind /system " + CHROOT + "/system 2>/dev/null",
+                "mount -t proc proc " + chrootDir + "/proc 2>/dev/null",
+                "mount -t sysfs sys " + chrootDir + "/sys 2>/dev/null",
+                "mount --bind /dev " + chrootDir + "/dev 2>/dev/null",
+                "mount --bind /dev/pts " + chrootDir + "/dev/pts 2>/dev/null",
+                "mount --bind /system " + chrootDir + "/system 2>/dev/null",
         };
         boolean allOk = true;
         for (String m : mounts) {
-            int rc = exec(new String[]{SU_PATH, "-c", m}, 5000);
+            int rc = exec(new String[]{suPath, "-c", m}, 5000);
             if (rc != 0) allOk = false;
         }
 
         // Criar diretório de policy
-        exec(new String[]{SU_PATH, "-c",
-                "mkdir -p " + POLICY_DIR + "; touch " + POLICY_DIR + "/policy.tsv"}, 5000);
+        exec(new String[]{suPath, "-c",
+                "mkdir -p " + policyDir + "; touch " + policyDir + "/policy.tsv"}, 5000);
 
         state.setLastMessage(allOk ? "Chroot montado" : "Chroot parcialmente montado");
         return allOk;
@@ -91,8 +101,8 @@ public class ServiceManager {
         }
 
         Log.i(TAG, "Iniciando sshd (22/2222)...");
-        int rc = exec(new String[]{SU_PATH, "-c",
-                "chroot " + CHROOT + " /bin/bash -c 'mkdir -p /run/sshd; sshd -p 22; sshd -p 2222; echo sshd_ok'"}, 10000);
+        int rc = exec(new String[]{suPath, "-c",
+                "chroot " + chrootDir + " /bin/bash -c 'mkdir -p /run/sshd; sshd -p 22; sshd -p 2222; echo sshd_ok'"}, 10000);
         return rc == 0;
     }
 
@@ -103,8 +113,8 @@ public class ServiceManager {
         }
 
         Log.i(TAG, "Verificando ttyd...");
-        exec(new String[]{SU_PATH, "-c",
-                "if command -v ttyd >/dev/null 2>&1; then chroot " + CHROOT + " ttyd -p 7681 /bin/bash & fi"}, 5000);
+        exec(new String[]{suPath, "-c",
+                "if command -v ttyd >/dev/null 2>&1; then chroot " + chrootDir + " ttyd -p 7681 /bin/bash & fi"}, 5000);
         return true;
     }
 }

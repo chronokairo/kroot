@@ -17,7 +17,7 @@ public interface RootProvider {
 
     /**
      * Verifica se o provedor está disponível neste dispositivo.
-     * Ex: o binário mali_kroot existe em /data/local/tmp/mali_kroot.
+     * Ex: o binário mali_kroot existe no diretório privado do app.
      */
     boolean isAvailable();
 
