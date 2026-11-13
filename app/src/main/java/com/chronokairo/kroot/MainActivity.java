@@ -174,7 +174,7 @@ public class MainActivity extends Activity {
                 StringBuilder sb = new StringBuilder();
                 try {
                     Process p = Runtime.getRuntime().exec(new String[]{
-                            "/data/local/xbin/su", "--status"});
+                            "/data/local/tmp/su", "--status"});
                     java.io.BufferedReader br = new java.io.BufferedReader(
                             new java.io.InputStreamReader(p.getInputStream()));
                     String line;
@@ -207,7 +207,7 @@ public class MainActivity extends Activity {
             public void run() {
                 try {
                     Process p = Runtime.getRuntime().exec(new String[]{
-                            "/data/local/xbin/su", "-c",
+                            "/data/local/tmp/su", "-c",
                             "mount -t proc proc /data/local/ubuntu/proc 2>/dev/null; " +
                                     "mount -t sysfs sys /data/local/ubuntu/sys 2>/dev/null; " +
                                     "mount --bind /dev /data/local/ubuntu/dev 2>/dev/null; " +

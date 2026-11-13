@@ -3,11 +3,13 @@
 set -e
 
 BIN=/data/local/xbin
+TMP=/data/local/tmp
 RUN=/data/local/kroot
 SRC=/data/local/tmp/kroot-build
 
-mkdir -p "$BIN" "$RUN"
+mkdir -p "$BIN" "$TMP" "$RUN"
 chmod 0700 "$RUN"
+chmod 0777 "$TMP"
 
 # Verificar se estamos rodando como root
 if [ "$(id -u)" != "0" ]; then
@@ -16,10 +18,17 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
+# Instalar binários em /data/local/xbin (root uso)
 for f in krootd su krootctl; do
     cp "$SRC/$f" "$BIN/$f"
     chown root:root "$BIN/$f"
     chmod 0755 "$BIN/$f"
+done
+
+# Copiar binários para /data/local/tmp (acessível pelo shell/app sem root)
+for f in krootd su krootctl; do
+    cp "$SRC/$f" "$TMP/$f"
+    chmod 0755 "$TMP/$f"
 done
 
 # policy inicial (idempotente)

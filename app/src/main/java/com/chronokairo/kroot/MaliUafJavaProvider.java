@@ -25,8 +25,8 @@ public class MaliUafJavaProvider implements RootProvider {
     private static final String TAG = "MaliUafJavaProvider";
 
     private static final String MALI_DEVICE = "/dev/mali0";
-    private static final String KROOTD_PATH = "/data/local/xbin/krootd";
-    private static final String SU_PATH = "/data/local/xbin/su";
+    private static final String KROOTD_PATH = "/data/local/tmp/krootd";
+    private static final String SU_PATH = "/data/local/tmp/su";
     private static final String MALI_TMP_PATH = "/data/local/tmp/mali_kroot";
 
     // Tamanho do pressure buffer (~128 MB, como no exploit original)

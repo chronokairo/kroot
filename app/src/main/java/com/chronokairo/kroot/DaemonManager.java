@@ -12,8 +12,8 @@ import android.util.Log;
 public class DaemonManager {
 
     private static final String TAG = "DaemonManager";
-    private static final String KROOTD_PATH = "/data/local/xbin/krootd";
-    private static final String SU_PATH = "/data/local/xbin/su";
+    private static final String KROOTD_PATH = "/data/local/tmp/krootd";
+    private static final String SU_PATH = "/data/local/tmp/su";
 
     private final RootState state;
     private final RootProvider provider;
