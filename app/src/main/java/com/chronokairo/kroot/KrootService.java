@@ -96,9 +96,30 @@ public class KrootService extends Service {
     }
 
     private void startKrootd() {
-        Log.i(TAG, "Iniciando krootd...");
-        execCmd(new String[]{SU_KROOT, "--daemon"});
+        Log.i(TAG, "Verificando se krootd ja esta online...");
+        String status = execCmdCapture(new String[]{SU_KROOT, "--status"});
+        if (status != null && status.contains("online")) {
+            Log.i(TAG, "krootd ja esta online");
+            return;
+        }
+
+        Log.i(TAG, "Testando se root esta disponível via su -c id...");
+        String rootTest = execCmdCapture(new String[]{SU_KROOT, "-c", "id"});
+        if (rootTest == null || !rootTest.contains("uid=0")) {
+            Log.w(TAG, "Root nao disponivel. Precisa do bootstrap Mali UAF (executar uma vez por boot).");
+            return;
+        }
+
+        Log.i(TAG, "Root disponivel. Iniciando krootd como uid 0...");
+        execCmd(new String[]{SU_KROOT, "-c", "/data/local/xbin/krootd --daemon"});
         sleep(1000);
+
+        status = execCmdCapture(new String[]{SU_KROOT, "--status"});
+        if (status != null && status.contains("online")) {
+            Log.i(TAG, "krootd iniciado com sucesso");
+        } else {
+            Log.w(TAG, "Falha ao iniciar krootd");
+        }
     }
 
     private void mountChroot() {
