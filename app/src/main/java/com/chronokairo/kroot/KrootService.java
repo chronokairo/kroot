@@ -42,6 +42,19 @@ public class KrootService extends Service {
 
         Log.i(TAG, "Kairos Root service iniciado");
 
+        // Executar inicializacao de servicos em thread separada para nao
+        // bloquear a thread principal (evita tela branca / ANR).
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                initServices();
+            }
+        }).start();
+
+        return START_STICKY;
+    }
+
+    private void initServices() {
         // 1. Garantir que krootd está no ar
         startKrootd();
 
@@ -54,7 +67,7 @@ public class KrootService extends Service {
         // 4. Iniciar ttyd 7681 dentro do chroot (se existir)
         startTtyd();
 
-        // 5. Watchdog: verificar a cada 30s se tudo está vivo
+        // 5. Watchdog: verificar a cada 30s se tudo está vivo (em thread de bg)
         handler = new Handler(Looper.getMainLooper());
         watchdogRunnable = new Runnable() {
             @Override
@@ -65,8 +78,6 @@ public class KrootService extends Service {
             }
         };
         handler.postDelayed(watchdogRunnable, 30000);
-
-        return START_STICKY;
     }
 
     @Override
@@ -166,8 +177,14 @@ public class KrootService extends Service {
         // Verificar krootd
         String krootdStatus = execCmdCapture(new String[]{SU_KROOT, "--status"});
         if (krootdStatus == null || !krootdStatus.contains("online")) {
-            Log.w(TAG, "krootd offline, reiniciando...");
-            execCmd(new String[]{SU_KROOT, "--daemon"});
+            Log.w(TAG, "krootd offline, tentando reiniciar...");
+            // Tentar iniciar apenas se root estiver disponível
+            String rootTest = execCmdCapture(new String[]{SU_KROOT, "-c", "id"});
+            if (rootTest != null && rootTest.contains("uid=0")) {
+                execCmd(new String[]{SU_KROOT, "-c", "/data/local/xbin/krootd --daemon"});
+            } else {
+                Log.w(TAG, "Root nao disponivel para reiniciar o krootd.");
+            }
             sleep(1000);
         }
 

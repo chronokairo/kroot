@@ -53,19 +53,12 @@ static int resolve_uid(const char *s, uid_t *out) {
 }
 
 static void bootstrap(void) {
-    fprintf(stderr, "kroot: daemon ausente, subindo...\n");
+    fprintf(stderr,
+        "kroot: daemon ausente e processo sem UID 0.\n"
+        "   O bootstrap Mali UAF precisa ser executado uma vez por boot\n"
+        "   para obter UID 0 e iniciar /data/local/xbin/krootd --daemon.\n");
 
-    if (getuid() == 0) {
-        /* Ja somos root: iniciar o krootd diretamente. */
-        (void)system("/data/local/xbin/krootd --daemon");
-    } else {
-        /* Nao somos root: precisa de um su com privilégos ja instalado
-           (ex.: deixado por uma execucao anterior do exploit Mali). */
-        (void)system("echo '/data/local/xbin/krootd --daemon' | "
-                     "/data/local/xbin/su >/dev/null 2>&1");
-    }
-
-    for (int i = 0; i < 40; i++) {
+    for (int i = 0; i < 10; i++) {
         int fd = kroot_connect();
         if (fd >= 0) {
             close(fd);

@@ -9,6 +9,13 @@ SRC=/data/local/tmp/kroot-build
 mkdir -p "$BIN" "$RUN"
 chmod 0700 "$RUN"
 
+# Verificar se estamos rodando como root
+if [ "$(id -u)" != "0" ]; then
+    echo "AVISO: install-device.sh precisa ser executado como root (UID 0)." >&2
+    echo "       Execute primeiro o bootstrap Mali UAF para obter UID 0." >&2
+    exit 1
+fi
+
 for f in krootd su krootctl; do
     cp "$SRC/$f" "$BIN/$f"
     chown root:root "$BIN/$f"
@@ -32,7 +39,7 @@ else
         printf '10260\tallow\tcom.chronokairo.kroot\t0\n' >> "$RUN/policy.tsv"
 fi
 
-# sobe o daemon se ainda nao estiver no ar (só funciona se executado como root)
+# sobe o daemon (só funciona se executado como root)
 if ! "$BIN/krootd" --status; then
     "$BIN/krootd" --daemon
     sleep 1
