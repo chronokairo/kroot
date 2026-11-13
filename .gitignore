@@ -4,3 +4,9 @@ out/
 *.so
 .DS_Store
 *.swp
+
+# Documentação do projeto (não rastreada)
+docs/KROOT-LAUNCHER.md
+
+# Documentação pessoal (não versionada)
+.brain
