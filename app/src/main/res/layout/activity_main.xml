@@ -2,205 +2,162 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#107C10">
+    android:background="#000000">
 
-    <!-- Status bar simulada (topo) -->
+    <!-- Header: KROOT title -->
     <LinearLayout
-        android:id="@+id/status_bar"
+        android:id="@+id/header"
         android:layout_width="match_parent"
-        android:layout_height="48dp"
+        android:layout_height="56dp"
         android:orientation="horizontal"
         android:gravity="center_vertical|start"
-        android:paddingLeft="16dp"
-        android:paddingRight="16dp">
+        android:paddingLeft="20dp"
+        android:paddingRight="20dp">
 
         <TextView
-            android:id="@+id/clock"
+            android:id="@+id/title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="12:00"
-            android:textSize="20sp"
+            android:text="KROOT"
+            android:textSize="32sp"
             android:textColor="#FFFFFF"
+            android:textStyle="bold"/>
+    </LinearLayout>
+
+    <!-- Status card -->
+    <LinearLayout
+        android:id="@+id/status_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/header"
+        android:layout_margin="20dp"
+        android:background="#1A1A1A"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:id="@+id/status_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="System Status"
+            android:textSize="14sp"
+            android:textColor="#888888"
             android:textStyle="bold"/>
 
         <TextView
-            android:id="@+id/date"
+            android:id="@+id/status_value"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="13 nov"
-            android:textSize="14sp"
-            android:textColor="#CCFFFFFF"
-            android:layout_marginLeft="8dp"/>
+            android:text="Checking..."
+            android:textSize="20sp"
+            android:textColor="#FFFFFF"
+            android:layout_marginTop="8dp"/>
+
+        <TextView
+            android:id="@+id/status_detail"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tap Activate to start"
+            android:textSize="13sp"
+            android:textColor="#666666"
+            android:layout_marginTop="4dp"/>
     </LinearLayout>
 
-    <!-- Ãrea de scroll com tiles -->
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_below="@id/status_bar"
-        android:layout_above="@id/bottom_nav"
-        android:fillViewport="true">
-
-        <LinearLayout
-            android:id="@+id/tiles_container"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
-
-            <!-- Tile do Ubuntu Chroot (destaque) -->
-            <LinearLayout
-                android:id="@+id/tile_ubuntu"
-                android:layout_width="match_parent"
-                android:layout_height="120dp"
-                android:orientation="horizontal"
-                android:background="#0078D7"
-                android:padding="12dp"
-                android:layout_marginBottom="16dp"
-                android:clickable="true"
-                android:focusable="true">
-
-                <ImageView
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:src="@mipmap/ic_launcher"
-                    android:layout_gravity="center_vertical"/>
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:layout_gravity="center_vertical"
-                    android:layout_marginLeft="16dp">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Ubuntu Chroot"
-                        android:textSize="20sp"
-                        android:textColor="#FFFFFF"
-                        android:textStyle="bold"/>
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Terminal Linux integrado"
-                        android:textSize="14sp"
-                        android:textColor="#CCFFFFFF"/>
-                </LinearLayout>
-            </LinearLayout>
-
-            <!-- TÃ­tulo da seÃ§Ã£o de apps -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="APLICATIVOS"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:textColor="#CCFFFFFF"
-                android:layout_marginBottom="8dp"
-                android:paddingLeft="4dp"/>
-
-            <!-- Container dos tiles dos apps do usuÃ¡rio -->
-            <GridLayout
-                android:id="@+id/apps_grid"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:columnCount="3"
-                android:alignmentMode="alignBounds"
-                android:paddingLeft="4dp"
-                android:paddingRight="4dp"/>
-
-            <!-- Status do sistema (preenchido por checkStatus()) -->
-            <TextView
-                android:id="@+id/status"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Inicializando KROOT..."
-                android:textColor="#FFFFFF"
-                android:textSize="12sp"
-                android:padding="8dp"
-                android:layout_marginTop="8dp"/>
-
-            <!-- Estado do root (preenchido pelo serviço) -->
-            <TextView
-                android:id="@+id/root_state"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Aguardando inicialização..."
-                android:textColor="#CCFFFFFF"
-                android:textSize="12sp"
-                android:padding="8dp"
-                android:layout_marginTop="4dp"/>
-
-            <!-- Botão principal de ativação do root -->
-            <Button
-                android:id="@+id/btn_activate"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:text="Ativar KROOT"
-                android:textSize="16sp"
-                android:textColor="#0078D7"
-                android:layout_marginTop="16dp"
-                android:background="?android:attr/selectableItemBackground"/>
-
-            <!-- BotÃ£o "Todos os Apps" -->
-            <Button
-                android:id="@+id/btn_all_apps"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:text="Todos os Aplicativos"
-                android:textSize="16sp"
-                android:layout_marginTop="16dp"/>
-
-        </LinearLayout>
-    </ScrollView>
-
-    <!-- Barra de navegaÃ§Ã£o inferior (estilo Windows 10 Mobile) -->
+    <!-- Main activation button (Dopamine style: big, centered) -->
     <LinearLayout
-        android:id="@+id/bottom_nav"
+        android:id="@+id/button_container"
         android:layout_width="match_parent"
-        android:layout_height="64dp"
-        android:layout_alignParentBottom="true"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/status_card"
+        android:layout_margin="20dp"
+        android:gravity="center">
+
+        <Button
+            android:id="@+id/btn_activate"
+            android:layout_width="260dp"
+            android:layout_height="56dp"
+            android:text="Activate KROOT"
+            android:textSize="18sp"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#007AFF"
+            android:textStyle="bold"/>
+    </LinearLayout>
+
+    <!-- Secondary actions row -->
+    <LinearLayout
+        android:id="@+id/actions_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/button_container"
+        android:layout_margin="20dp"
         android:orientation="horizontal"
-        android:background="#FFFFFF"
-        android:elevation="8dp"
-        android:paddingTop="4dp">
-
-        <Button
-            android:id="@+id/btn_ubuntu"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:text="Ubuntu"
-            android:textSize="12sp"
-            android:textColor="#0078D7"
-            android:background="?android:attr/selectableItemBackground"
-            android:gravity="center"/>
-
-        <Button
-            android:id="@+id/btn_apps"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:text="Apps"
-            android:textSize="12sp"
-            android:textColor="#333333"
-            android:background="?android:attr/selectableItemBackground"
-            android:gravity="center"/>
+        android:gravity="center">
 
         <Button
             android:id="@+id/btn_status"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:text="Status"
-            android:textSize="12sp"
-            android:textColor="#333333"
-            android:background="?android:attr/selectableItemBackground"
-            android:gravity="center"/>
+            android:textSize="14sp"
+            android:textColor="#007AFF"
+            android:backgroundTint="#00000000"/>
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="32dp"
+            android:layout_marginLeft="8dp"
+            android:layout_marginRight="8dp"
+            android:background="#333333"/>
+
+        <Button
+            android:id="@+id/btn_apps"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Apps"
+            android:textSize="14sp"
+            android:textColor="#007AFF"
+            android:backgroundTint="#00000000"/>
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="32dp"
+            android:layout_marginLeft="8dp"
+            android:layout_marginRight="8dp"
+            android:background="#333333"/>
+
+        <Button
+            android:id="@+id/btn_ubuntu"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ubuntu"
+            android:textSize="14sp"
+            android:textColor="#007AFF"
+            android:backgroundTint="#00000000"/>
+    </LinearLayout>
+
+    <!-- Spacer to push content up -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_below="@id/actions_row"
+        android:layout_above="@id/footer"/>
+
+    <!-- Footer: version -->
+    <LinearLayout
+        android:id="@+id/footer"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_alignParentBottom="true"
+        android:gravity="center"
+        android:paddingBottom="8dp">
+
+        <TextView
+            android:id="@+id/version"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="KROOT v1.0"
+            android:textSize="11sp"
+            android:textColor="#444444"/>
     </LinearLayout>
 
 </RelativeLayout>
-

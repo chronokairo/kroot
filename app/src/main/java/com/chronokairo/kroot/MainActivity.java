@@ -5,47 +5,34 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.view.Gravity;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.GridLayout;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 /**
- * Launcher principal do Kairos Root.
+ * Kairos Root Launcher — Dopamine-inspired minimal interface.
  *
- * Responsabilidades:
- *  - Exibir interface imediatamente (não espera por root)
- *  - Observar estado do RootState via callbacks
- *  - Iniciar KrootService (supervisão) em background
- *  - Exibir botão de ativação para bootstrap
- *  - Carregar apps do usuário como tiles
- *
- * Não executa operações de bootstrap diretamente; delega ao serviço.
+ * Responsibilities:
+ *  - Show interface immediately (never waits for root)
+ *  - Observe RootState via broadcast from KrootService
+ *  - Start KrootService (supervision) in background
+ *  - Show big activation button for bootstrap
+ *  - Secondary actions: Status, Apps, Ubuntu
  */
 public class MainActivity extends Activity {
 
-    private TextView statusView;
-    private TextView clockView;
-    private TextView rootStateView;
-    private GridLayout appsGrid;
+    private TextView statusValue;
+    private TextView statusDetail;
     private Button btnActivate;
-    private Handler handler;
+    private Button btnStatus;
+    private Button btnApps;
+    private Button btnUbuntu;
 
-    // Recebe atualizações de estado do KrootService
+    // Receives state updates from KrootService
     private final BroadcastReceiver stateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -62,7 +49,7 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Fullscreen imersivo
+        // Immersive fullscreen
         View decorView = getWindow().getDecorView();
         decorView.setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
@@ -73,57 +60,37 @@ public class MainActivity extends Activity {
                         | View.SYSTEM_UI_FLAG_FULLSCREEN);
         setContentView(R.layout.activity_main);
 
-        statusView = findViewById(R.id.status);
-        clockView = findViewById(R.id.clock);
-        rootStateView = findViewById(R.id.root_state);
-        appsGrid = findViewById(R.id.apps_grid);
+        statusValue = findViewById(R.id.status_value);
+        statusDetail = findViewById(R.id.status_detail);
         btnActivate = findViewById(R.id.btn_activate);
+        btnStatus = findViewById(R.id.btn_status);
+        btnApps = findViewById(R.id.btn_apps);
+        btnUbuntu = findViewById(R.id.btn_ubuntu);
 
-        // Relógio
-        handler = new Handler(Looper.getMainLooper());
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-                updateClock();
-                handler.postDelayed(this, 1000);
-            }
-        });
-
-        // Botões da barra inferior
-        findViewById(R.id.btn_ubuntu).setOnClickListener(v -> openUbuntuTerminal());
-        findViewById(R.id.btn_apps).setOnClickListener(v -> {
+        // Secondary actions
+        btnStatus.setOnClickListener(v -> checkStatus());
+        btnApps.setOnClickListener(v -> {
             startActivity(new Intent(this, AppListActivity.class));
         });
-        findViewById(R.id.btn_status).setOnClickListener(v -> checkStatus());
+        btnUbuntu.setOnClickListener(v -> openUbuntuTerminal());
 
-        // Botão principal de ativação do root
+        // Main activation button
         btnActivate.setOnClickListener(v -> activateRoot());
 
-        // Botão: Tile Ubuntu Chroot
-        findViewById(R.id.tile_ubuntu).setOnClickListener(v -> openUbuntuTerminal());
+        // Initial status
+        updateStatus("Checking...", "Tap Activate to start");
 
-        // Botão: Todos os Apps
-        findViewById(R.id.btn_all_apps).setOnClickListener(v -> {
-            startActivity(new Intent(this, AppListActivity.class));
-        });
-
-        // Carregar apps do usuário como tiles
-        loadUserApps();
-
-        // Status inicial (não bloqueia UI)
-        updateStatusView("Inicializando...");
-
-        // Iniciar serviço de supervisão (em background)
+        // Start supervision service (background)
         startService(new Intent(this, KrootService.class));
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        // Ouvir atualizações de estado do serviço
+        // Listen for state updates from service
         IntentFilter filter = new IntentFilter("com.chronokairo.kroot.action.STATE_CHANGED");
         registerReceiver(stateReceiver, filter);
-        // Solicitar status atual
+        // Request current status
         checkStatus();
     }
 
@@ -137,47 +104,44 @@ public class MainActivity extends Activity {
     }
 
     private void updateUiFromState(String daemon, boolean root, String message) {
-        if (rootStateView != null) {
-            StringBuilder sb = new StringBuilder();
-            sb.append("Daemon: ").append(daemon != null ? daemon : "desconhecido").append("\n");
-            sb.append("Root: ").append(root ? "DISPONÍVEL" : "indisponível").append("\n");
-            if (message != null) {
-                sb.append(message);
-            }
-            rootStateView.setText(sb.toString());
+        if (statusValue != null) {
+            statusValue.setText(root ? "ROOT ACTIVE" : "ROOT OFF");
         }
-        if (statusView != null && message != null) {
-            statusView.setText(message);
+        if (statusDetail != null) {
+            statusDetail.setText(message != null ? message : "Tap Activate to start");
         }
 
-        // Atualizar botão de ativação
+        // Update activation button
         if (btnActivate != null) {
             if (root) {
                 btnActivate.setEnabled(false);
-                btnActivate.setText("Root Ativo");
+                btnActivate.setText("Root Active");
+                btnActivate.setBackgroundTintList(android.content.res.ColorStateList.valueOf(
+                        android.graphics.Color.parseColor("#007AFF")));
             } else {
                 btnActivate.setEnabled(true);
-                btnActivate.setText("Ativar KROOT");
+                btnActivate.setText("Activate KROOT");
+                btnActivate.setBackgroundTintList(android.content.res.ColorStateList.valueOf(
+                        android.graphics.Color.parseColor("#007AFF")));
             }
         }
     }
 
     private void activateRoot() {
-        // Solicitar ao serviço que execute o bootstrap
-        // O serviço roda em thread separada, não bloqueia a UI
+        // Ask service to run bootstrap (thread-separated, non-blocking UI)
         btnActivate.setEnabled(false);
-        btnActivate.setText("Ativando...");
+        btnActivate.setText("Activating...");
+        updateStatus("Activating...", "Running Mali UAF bootstrap...");
 
         new Thread(new Runnable() {
             @Override
             public void run() {
-                // Enviar broadcast para o serviço tentar o bootstrap
-                // (implementado via intent com action)
+                // Ask service to try bootstrap via intent action
                 Intent intent = new Intent(MainActivity.this, KrootService.class);
                 intent.setAction("com.chronokairo.kroot.action.BOOTSTRAP");
                 startService(intent);
 
-                // Aguardar e atualizar UI
+                // Wait and refresh UI
                 try {
                     Thread.sleep(3000);
                 } catch (InterruptedException e) {}
@@ -185,94 +149,56 @@ public class MainActivity extends Activity {
                     @Override
                     public void run() {
                         btnActivate.setEnabled(true);
-                        btnActivate.setText("Verificar Root");
-                        updateStatusView("Verifique o status acima");
+                        btnActivate.setText("Check Root");
+                        updateStatus("Check status above", "Tap Status for details");
                     }
                 });
             }
         }).start();
     }
 
-    private void updateClock() {
-        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("HH:mm");
-        java.text.SimpleDateFormat dateFmt = new java.text.SimpleDateFormat("dd MMM");
-        java.util.Locale ptBr = new java.util.Locale("pt", "BR");
-        clockView.setText(sdf.format(new java.util.Date()));
-        TextView dateView = findViewById(R.id.date);
-        if (dateView != null) {
-            dateView.setText(dateFmt.format(new java.util.Date()).toUpperCase(ptBr));
+    private void updateStatus(String value, String detail) {
+        if (statusValue != null) {
+            statusValue.setText(value);
+        }
+        if (statusDetail != null) {
+            statusDetail.setText(detail);
         }
     }
 
-    private void loadUserApps() {
-        PackageManager pm = getPackageManager();
-        Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
-        mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+    private void checkStatus() {
+        // Run checks off UI thread
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                StringBuilder sb = new StringBuilder();
+                try {
+                    Process p = Runtime.getRuntime().exec(new String[]{
+                            "/data/local/xbin/su", "--status"});
+                    java.io.BufferedReader br = new java.io.BufferedReader(
+                            new java.io.InputStreamReader(p.getInputStream()));
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        sb.append(line).append("\n");
+                    }
+                    p.waitFor();
+                } catch (Exception e) {
+                    sb.append("Error checking status: ").append(e.getMessage()).append("\n");
+                }
 
-        List<ResolveInfo> apps = pm.queryIntentActivities(mainIntent, 0);
-        Collections.sort(apps, (a, b) -> {
-            String la = a.loadLabel(pm) != null ? a.loadLabel(pm).toString() : "";
-            String lb = b.loadLabel(pm) != null ? b.loadLabel(pm).toString() : "";
-            return la.compareToIgnoreCase(lb);
-        });
-
-        int index = 0;
-        for (ResolveInfo info : apps) {
-            String pkg = info.activityInfo.packageName;
-            if (pkg.equals("com.chronokairo.kroot")) continue;
-
-            View tile = createAppTile(info, pm);
-            GridLayout.Spec rowSpec = GridLayout.spec(index / 3);
-            GridLayout.Spec colSpec = GridLayout.spec(index % 3);
-            GridLayout.LayoutParams params = new GridLayout.LayoutParams(rowSpec, colSpec);
-            params.width = ViewGroup.LayoutParams.MATCH_PARENT;
-            params.height = ViewGroup.LayoutParams.WRAP_CONTENT;
-            params.setGravity(Gravity.FILL);
-            params.setMargins(4, 4, 4, 4);
-            appsGrid.addView(tile, params);
-            index++;
-        }
-    }
-
-    private View createAppTile(ResolveInfo info, PackageManager pm) {
-        LinearLayout tile = new LinearLayout(this);
-        tile.setOrientation(LinearLayout.VERTICAL);
-        tile.setLayoutParams(new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT));
-        tile.setPadding(8, 8, 8, 8);
-        tile.setBackgroundColor(Color.parseColor("#FFFFFF"));
-        tile.setClickable(true);
-        tile.setFocusable(true);
-
-        ImageView icon = new ImageView(this);
-        icon.setImageDrawable(info.loadIcon(pm));
-        int px = (int) (48 * getResources().getDisplayMetrics().density);
-        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(px, px);
-        iconParams.gravity = Gravity.CENTER_HORIZONTAL;
-        icon.setLayoutParams(iconParams);
-
-        TextView label = new TextView(this);
-        label.setText(info.loadLabel(pm));
-        label.setTextSize(12f);
-        label.setTextColor(Color.parseColor("#000000"));
-        label.setGravity(Gravity.CENTER);
-        label.setMaxLines(2);
-        label.setEllipsize(android.text.TextUtils.TruncateAt.END);
-
-        tile.addView(icon);
-        tile.addView(label);
-
-        final String launchPkg = info.activityInfo.packageName;
-        tile.setOnClickListener(v -> {
-            Intent launchIntent = pm.getLaunchIntentForPackage(launchPkg);
-            if (launchIntent != null) {
-                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(launchIntent);
+                final String result = sb.toString().trim();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (result.contains("online")) {
+                            updateStatus("ROOT ACTIVE", "krootd online — root available");
+                        } else {
+                            updateStatus("ROOT OFF", "krootd offline — tap Activate");
+                        }
+                    }
+                });
             }
-        });
-
-        return tile;
+        }).start();
     }
 
     private void openUbuntuTerminal() {
@@ -293,50 +219,11 @@ public class MainActivity extends Activity {
                         @Override
                         public void run() {
                             Toast.makeText(MainActivity.this,
-                                    "Erro: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                                    "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
                         }
                     });
                 }
             }
         }).start();
-    }
-
-    private void checkStatus() {
-        if (statusView == null) return;
-
-        // Executar verificações fora da UI thread
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                StringBuilder sb = new StringBuilder();
-                try {
-                    Process p1 = Runtime.getRuntime().exec(new String[]{"/data/local/xbin/su", "--status"});
-                    java.io.BufferedReader br1 = new java.io.BufferedReader(
-                            new java.io.InputStreamReader(p1.getInputStream()));
-                    String line;
-                    while ((line = br1.readLine()) != null) sb.append(line).append("\n");
-                    p1.waitFor();
-                } catch (Exception e) {
-                    sb.append("Erro ao verificar status: ").append(e.getMessage()).append("\n");
-                }
-
-                final String result = sb.toString();
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        updateStatusView(result);
-                    }
-                });
-            }
-        }).start();
-    }
-
-    private void updateStatusView(String text) {
-        if (statusView != null) {
-            statusView.setText(text);
-        }
-        if (rootStateView != null) {
-            rootStateView.setText(text);
-        }
     }
 }

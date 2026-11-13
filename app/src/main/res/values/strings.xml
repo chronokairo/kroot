@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Kairos Root</string>
-    <string name="btn_terminal">Terminal Ubuntu Chroot</string>
-    <string name="btn_status">Status krootd</string>
-    <string name="btn_policy">Policy Root</string>
-    <string name="btn_logs">Logs</string>
-    <string name="btn_restart">Reiniciar krootd</string>
-    <string name="status_placeholder">Aguardando status...</string>
+    <string name="app_name">KROOT</string>
+    <string name="btn_activate">Activate KROOT</string>
+    <string name="btn_status">Status</string>
+    <string name="btn_apps">Apps</string>
+    <string name="btn_ubuntu">Ubuntu</string>
+    <string name="status_checking">Checking...</string>
+    <string name="status_root_active">ROOT ACTIVE</string>
+    <string name="status_root_off">ROOT OFF</string>
+    <string name="detail_tap_activate">Tap Activate to start</string>
+    <string name="detail_krootd_online">krootd online — root available</string>
+    <string name="detail_krootd_offline">krootd offline — tap Activate</string>
+    <string name="version">KROOT v1.0</string>
 </resources>
