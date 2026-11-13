@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Color;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -175,37 +176,61 @@ public class MainActivity extends Activity {
         return tile;
     }
 
-    private void runCmd(String[] cmd) {
-        try {
-            Process p = Runtime.getRuntime().exec(cmd);
-            BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = br.readLine()) != null) sb.append(line).append("\n");
-            p.waitFor();
-            if (statusView != null) {
-                runOnUiThread(() -> statusView.setText(sb.toString()));
+    // Executa comandos de root fora da UI thread para evitar ANR / bloqueio.
+    private static class RootTask extends AsyncTask<String[], Void, String> {
+        private final MainActivity activity;
+        private final boolean formatStatus;
+
+        RootTask(MainActivity activity, boolean formatStatus) {
+            this.activity = activity;
+            this.formatStatus = formatStatus;
+        }
+
+        @Override
+        protected String doInBackground(String[]... cmds) {
+            StringBuilder out = new StringBuilder();
+            for (String[] cmd : cmds) {
+                try {
+                    Process p = Runtime.getRuntime().exec(cmd);
+                    BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
+                    String line;
+                    while ((line = br.readLine()) != null) out.append(line).append("\n");
+                    p.waitFor();
+                    out.append("---CMD_END---\n");
+                } catch (Exception e) {
+                    out.append("Erro: ").append(e.getMessage()).append("\n---CMD_END---\n");
+                }
             }
-        } catch (Exception e) {
-            if (statusView != null) {
-                runOnUiThread(() -> statusView.setText("Erro: " + e.getMessage()));
+            if (formatStatus && out.length() > 0) {
+                String[] parts = out.toString().split("---CMD_END---\n");
+                String krootd = parts.length > 0 ? parts[0] : "";
+                String uptime = parts.length > 1 ? parts[1] : "";
+                String sshd = parts.length > 2 ? parts[2] : "";
+
+                StringBuilder sb = new StringBuilder();
+                sb.append("=== Kairos Root Status ===\n");
+                sb.append("krootd: ").append(krootd.contains("online") ? "ONLINE" : "OFFLINE").append("\n");
+                sb.append("chroot: ").append(uptime.trim()).append("\n");
+                sb.append("sshd: ").append(sshd.contains("2222") ? "22/2222 OK" : sshd.trim()).append("\n");
+                if (activity != null && activity.appsGrid != null) {
+                    sb.append("Apps: ").append(activity.appsGrid.getChildCount()).append(" tiles\n");
+                }
+                sb.append("=========================\n");
+                return sb.toString();
             }
-            Toast.makeText(this, "Erro: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            return out.toString().trim();
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            if (activity != null && activity.statusView != null) {
+                activity.statusView.setText(result);
+            }
         }
     }
 
-    private String captureCmd(String[] cmd) {
-        try {
-            Process p = Runtime.getRuntime().exec(cmd);
-            BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = br.readLine()) != null) sb.append(line).append("\n");
-            p.waitFor();
-            return sb.toString().trim();
-        } catch (Exception e) {
-            return "Erro: " + e.getMessage();
-        }
+    private void runCmd(String[] cmd) {
+        new RootTask(this, false).execute(cmd);
     }
 
     private void openUbuntuTerminal() {
@@ -223,20 +248,13 @@ public class MainActivity extends Activity {
             return;
         }
 
-        String krootd = captureCmd(new String[]{SU_KROOT, "--status"});
-        String uptime = captureCmd(new String[]{SU_KROOT, "-c",
-            "chroot " + CHROOT + " /bin/bash -c 'uptime 2>/dev/null || echo n/a'"});
-        String sshd = captureCmd(new String[]{SU_KROOT, "-c",
-            "chroot " + CHROOT + " /bin/bash -c 'ss -tlnp 2>/dev/null | grep -E \"22|2222\" || echo sshd_down'"});
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("=== Kairos Root Status ===\n");
-        sb.append("krootd: ").append(krootd.contains("online") ? "ONLINE" : "OFFLINE").append("\n");
-        sb.append("chroot: ").append(uptime).append("\n");
-        sb.append("sshd: ").append(sshd.contains("2222") ? "22/2222 OK" : sshd).append("\n");
-        sb.append("Apps: ").append(appsGrid.getChildCount()).append(" tiles\n");
-        sb.append("=========================\n");
-
-        runOnUiThread(() -> statusView.setText(sb.toString()));
+        // Executa as três verificações totalmente fora da UI thread
+        new RootTask(this, true).execute(
+            new String[]{SU_KROOT, "--status"},
+            new String[]{SU_KROOT, "-c",
+                "chroot " + CHROOT + " /bin/bash -c 'uptime 2>/dev/null || echo n/a'"},
+            new String[]{SU_KROOT, "-c",
+                "chroot " + CHROOT + " /bin/bash -c 'ss -tlnp 2>/dev/null | grep -E \"22|2222\" || echo sshd_down'"}
+        );
     }
 }
