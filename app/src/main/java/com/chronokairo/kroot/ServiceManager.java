@@ -20,11 +20,12 @@ public class ServiceManager {
     }
 
     /**
-     * Verifica se temos root (UID 0) antes de executar operações.
+     * Verifica se temos privilégios root executando 'su -c id'.
+     * Isso verifica se uma sessão elevada está disponível, não apenas o UID do próprio APK.
      */
     private boolean hasRoot() {
         try {
-            Process p = new ProcessBuilder("id", "-u")
+            Process p = new ProcessBuilder(SU_PATH, "-c", "id -u")
                     .redirectErrorStream(true)
                     .start();
             java.io.BufferedReader br = new java.io.BufferedReader(

@@ -7,8 +7,6 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.os.Build;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
 
 /**
@@ -36,8 +34,6 @@ public class KrootService extends Service {
     private DaemonManager daemonManager;
     private ServiceManager serviceManager;
 
-    private Handler handler;
-    private Runnable watchdogRunnable;
     private volatile boolean running = false;
 
     @Override
@@ -45,18 +41,53 @@ public class KrootService extends Service {
         super.onCreate();
         rootState = new RootState();
         logManager = new LogManager();
-        daemonManager = new DaemonManager(rootState);
-        serviceManager = new ServiceManager(rootState);
         RootProvider provider = new MaliUafJavaProvider(this);
+        daemonManager = new DaemonManager(rootState, provider);
+        serviceManager = new ServiceManager(rootState);
         bootstrapController = new BootstrapController(rootState, provider, daemonManager);
 
         // Inicializar UID do Android
         rootState.setAndroidUid(android.os.Process.myUid());
         logManager.i(TAG, "Serviço criado. UID=" + rootState.getAndroidUid());
+
+        // Ouvir mudanças de estado e notificar a UI via broadcast
+        rootState.addListener(new RootState.StateListener() {
+            @Override
+            public void onStateChanged(RootState state) {
+                Intent broadcast = new Intent("com.chronokairo.kroot.action.STATE_CHANGED");
+                broadcast.putExtra("bootstrap", state.getBootstrapStatus().name());
+                broadcast.putExtra("daemon", state.getDaemonStatus().name());
+                broadcast.putExtra("root", state.isRootAvailable());
+                broadcast.putExtra("message", state.getLastMessage());
+                sendBroadcast(broadcast);
+            }
+        });
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        String action = intent != null ? intent.getAction() : null;
+
+        // Se já estiver rodando e for uma solicitação de bootstrap, executar em nova thread
+        if ("com.chronokairo.kroot.action.BOOTSTRAP".equals(action)) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    Log.i(TAG, "Solicitação de bootstrap recebida");
+                    boolean rootOk = bootstrapController.ensureRootAvailable();
+                    if (rootOk) {
+                        serviceManager.mountChroot();
+                        serviceManager.startSshd();
+                        serviceManager.startTtyd();
+                        updateNotification("krootd online - serviços ativos");
+                    } else {
+                        updateNotification("Root não disponível - aguardando bootstrap Mali");
+                    }
+                }
+            }).start();
+            return START_STICKY;
+        }
+
         if (running) {
             return START_STICKY;
         }
@@ -117,16 +148,22 @@ public class KrootService extends Service {
     }
 
     private void startWatchdog() {
-        handler = new Handler(Looper.getMainLooper());
-        watchdogRunnable = new Runnable() {
+        // Watchdog em thread separada para não bloquear a UI thread
+        new Thread(new Runnable() {
             @Override
             public void run() {
-                if (!running) return;
-                checkAndHeal();
-                handler.postDelayed(this, 30000);
+                while (running) {
+                    try {
+                        Thread.sleep(30000);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                    if (!running) return;
+                    checkAndHeal();
+                }
             }
-        };
-        handler.postDelayed(watchdogRunnable, 30000);
+        }).start();
     }
 
     private void checkAndHeal() {
@@ -183,9 +220,6 @@ public class KrootService extends Service {
     @Override
     public void onDestroy() {
         running = false;
-        if (handler != null && watchdogRunnable != null) {
-            handler.removeCallbacks(watchdogRunnable);
-        }
         if (daemonManager != null) {
             daemonManager.stopRunning();
         }

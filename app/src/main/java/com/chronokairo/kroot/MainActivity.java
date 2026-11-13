@@ -1,7 +1,10 @@
 package com.chronokairo.kroot;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Color;
@@ -41,6 +44,19 @@ public class MainActivity extends Activity {
     private GridLayout appsGrid;
     private Button btnActivate;
     private Handler handler;
+
+    // Recebe atualizações de estado do KrootService
+    private final BroadcastReceiver stateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if ("com.chronokairo.kroot.action.STATE_CHANGED".equals(intent.getAction())) {
+                String daemon = intent.getStringExtra("daemon");
+                boolean root = intent.getBooleanExtra("root", false);
+                String message = intent.getStringExtra("message");
+                updateUiFromState(daemon, root, message);
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -99,6 +115,51 @@ public class MainActivity extends Activity {
 
         // Iniciar serviço de supervisão (em background)
         startService(new Intent(this, KrootService.class));
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Ouvir atualizações de estado do serviço
+        IntentFilter filter = new IntentFilter("com.chronokairo.kroot.action.STATE_CHANGED");
+        registerReceiver(stateReceiver, filter);
+        // Solicitar status atual
+        checkStatus();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        try {
+            unregisterReceiver(stateReceiver);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void updateUiFromState(String daemon, boolean root, String message) {
+        if (rootStateView != null) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("Daemon: ").append(daemon != null ? daemon : "desconhecido").append("\n");
+            sb.append("Root: ").append(root ? "DISPONÍVEL" : "indisponível").append("\n");
+            if (message != null) {
+                sb.append(message);
+            }
+            rootStateView.setText(sb.toString());
+        }
+        if (statusView != null && message != null) {
+            statusView.setText(message);
+        }
+
+        // Atualizar botão de ativação
+        if (btnActivate != null) {
+            if (root) {
+                btnActivate.setEnabled(false);
+                btnActivate.setText("Root Ativo");
+            } else {
+                btnActivate.setEnabled(true);
+                btnActivate.setText("Ativar KROOT");
+            }
+        }
     }
 
     private void activateRoot() {
@@ -277,12 +338,5 @@ public class MainActivity extends Activity {
         if (rootStateView != null) {
             rootStateView.setText(text);
         }
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        // Atualizar status ao voltar para a activity
-        checkStatus();
     }
 }

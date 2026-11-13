@@ -1,18 +1,19 @@
 package com.chronokairo.kroot;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 /**
  * Estado centralizado do sistema Kairos Root.
- * Permite que UI, serviço e controladores observem o mesmo estado sem acoplamento direto.
+ *
+ * Suporta observers para que a UI (MainActivity) receba atualizações
+ * quando o estado mudar (ex: krootd online, root disponível).
  */
 public class RootState {
 
     public enum BootstrapStatus {
-        UNKNOWN,       // Ainda não verificado
-        NOT_RUN,       // Bootstrap Mali não executado neste boot
-        RUNNING,       // Em execução
-        SUCCEEDED,     // Obteve UID 0 com sucesso
-        FAILED,        // Falhou
-        UNAVAILABLE    // Exploit não encontrado no dispositivo
+        UNKNOWN, NOT_RUN, RUNNING, SUCCEEDED, FAILED, UNAVAILABLE
     }
 
     public enum DaemonStatus {
@@ -23,44 +24,77 @@ public class RootState {
         UNKNOWN, NOT_AUTHORIZED, AUTHORIZED
     }
 
-    // Estado do bootstrap Mali UAF
+    public interface StateListener {
+        void onStateChanged(RootState state);
+    }
+
+    private final List<StateListener> listeners = Collections.synchronizedList(new ArrayList<>());
+
     private volatile BootstrapStatus bootstrapStatus = BootstrapStatus.UNKNOWN;
-
-    // Estado do daemon krootd
     private volatile DaemonStatus daemonStatus = DaemonStatus.UNKNOWN;
-
-    // Se o pacote Kairos Root está autorizado na policy
     private volatile AuthorizationStatus authorizationStatus = AuthorizationStatus.UNKNOWN;
-
-    // UID atual do processo Android
     private volatile int androidUid = -1;
-
-    // Se root (UID 0) está disponível via su
     private volatile boolean rootAvailable = false;
-
-    // Última mensagem de erro/diagnóstico
     private volatile String lastMessage = "";
-
-    // Último log de evento
     private volatile String lastLog = "";
 
+    public void addListener(StateListener listener) {
+        synchronized (listeners) {
+            listeners.add(listener);
+        }
+    }
+
+    public void removeListener(StateListener listener) {
+        synchronized (listeners) {
+            listeners.remove(listener);
+        }
+    }
+
+    private void notifyListeners() {
+        List<StateListener> copy;
+        synchronized (listeners) {
+            copy = new ArrayList<>(listeners);
+        }
+        for (StateListener l : copy) {
+            try {
+                l.onStateChanged(this);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
     public BootstrapStatus getBootstrapStatus() { return bootstrapStatus; }
-    public void setBootstrapStatus(BootstrapStatus s) { this.bootstrapStatus = s; }
+    public void setBootstrapStatus(BootstrapStatus s) {
+        this.bootstrapStatus = s;
+        notifyListeners();
+    }
 
     public DaemonStatus getDaemonStatus() { return daemonStatus; }
-    public void setDaemonStatus(DaemonStatus s) { this.daemonStatus = s; }
+    public void setDaemonStatus(DaemonStatus s) {
+        this.daemonStatus = s;
+        notifyListeners();
+    }
 
     public AuthorizationStatus getAuthorizationStatus() { return authorizationStatus; }
-    public void setAuthorizationStatus(AuthorizationStatus s) { this.authorizationStatus = s; }
+    public void setAuthorizationStatus(AuthorizationStatus s) {
+        this.authorizationStatus = s;
+        notifyListeners();
+    }
 
     public int getAndroidUid() { return androidUid; }
     public void setAndroidUid(int uid) { this.androidUid = uid; }
 
     public boolean isRootAvailable() { return rootAvailable; }
-    public void setRootAvailable(boolean available) { this.rootAvailable = available; }
+    public void setRootAvailable(boolean available) {
+        this.rootAvailable = available;
+        notifyListeners();
+    }
 
     public String getLastMessage() { return lastMessage; }
-    public void setLastMessage(String msg) { this.lastMessage = msg; }
+    public void setLastMessage(String msg) {
+        this.lastMessage = msg;
+        notifyListeners();
+    }
 
     public String getLastLog() { return lastLog; }
     public void setLastLog(String log) { this.lastLog = log; }

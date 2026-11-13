@@ -4,7 +4,10 @@ import android.util.Log;
 
 /**
  * Gerencia o ciclo de vida do daemon krootd.
- * Responsável apenas por iniciar, parar e verificar o status do daemon.
+ *
+ * O daemon SOMENTE pode ser iniciado com UID 0. O DaemonManager delega a
+ * inicialização ao RootProvider (MaliUafJavaProvider), que garante a
+ * elevação de privilégios antes de executar o krootd.
  */
 public class DaemonManager {
 
@@ -13,10 +16,12 @@ public class DaemonManager {
     private static final String SU_PATH = "/data/local/xbin/su";
 
     private final RootState state;
+    private final RootProvider provider;
     private volatile boolean running = false;
 
-    public DaemonManager(RootState state) {
+    public DaemonManager(RootState state, RootProvider provider) {
         this.state = state;
+        this.provider = provider;
     }
 
     public boolean isOnline() {
@@ -37,11 +42,24 @@ public class DaemonManager {
         }
     }
 
+    /**
+     * Inicia o krootd apenas se UID 0 estiver disponível.
+     * Delegado ao RootProvider, que executa o bootstrap se necessário.
+     */
     public boolean start() {
         if (isOnline()) {
             Log.i(TAG, "krootd já está online");
             state.setDaemonStatus(RootState.DaemonStatus.ONLINE);
+            state.setRootAvailable(true);
             return true;
+        }
+
+        // Verificar se temos UID 0 antes de tentar iniciar o daemon
+        if (!provider.hasRoot()) {
+            Log.w(TAG, "UID 0 não disponível. Não é possível iniciar krootd.");
+            state.setDaemonStatus(RootState.DaemonStatus.ERROR);
+            state.setLastMessage("UID 0 não disponível para iniciar krootd");
+            return false;
         }
 
         if (!new java.io.File(KROOTD_PATH).exists()) {
@@ -52,19 +70,24 @@ public class DaemonManager {
 
         running = true;
         try {
-            Log.i(TAG, "Iniciando krootd...");
+            Log.i(TAG, "Iniciando krootd como UID 0...");
             state.setDaemonStatus(RootState.DaemonStatus.STARTING);
 
-            Process p = new ProcessBuilder(KROOTD_PATH, "--daemon")
-                    .redirectErrorStream(true)
-                    .start();
-            p.waitFor();
+            // Delegar ao provedor, que tem contexto de privilégios
+            boolean started = provider.startKrootd();
+            if (!started) {
+                state.setDaemonStatus(RootState.DaemonStatus.ERROR);
+                state.setLastMessage("Falha ao iniciar krootd via provedor");
+                Log.w(TAG, "krootd não iniciado pelo provedor");
+                return false;
+            }
 
             // Aguardar socket ficar online (máximo 10s)
             for (int i = 0; i < 20; i++) {
                 if (!running) break;
                 if (isOnline()) {
                     state.setDaemonStatus(RootState.DaemonStatus.ONLINE);
+                    state.setRootAvailable(true);
                     state.setLastMessage("krootd iniciado com sucesso");
                     Log.i(TAG, "krootd online");
                     return true;
