@@ -16,7 +16,7 @@ import java.nio.ByteBuffer;
  * Estratégia (em ordem):
  *  1. Exploit Java puro (abre /dev/mali0, pressiona memória, tenta UAF via leitura/gravação)
  *  2. Fallback: copia o binário mali_kroot empacotado no APK (res/raw) para
- *     /data/local/tmp/mali_kroot, dá permissão de execução e roda
+ *     /data/local/xbin/mali_kroot, dá permissão de execução e roda
  *
  * Se qualquer etapa obtiver UID 0, inicia o krootd.
  */
@@ -25,9 +25,9 @@ public class MaliUafJavaProvider implements RootProvider {
     private static final String TAG = "MaliUafJavaProvider";
 
     private static final String MALI_DEVICE = "/dev/mali0";
-    private static final String KROOTD_PATH = "/data/local/tmp/krootd";
-    private static final String SU_PATH = "/data/local/tmp/su";
-    private static final String MALI_TMP_PATH = "/data/local/tmp/mali_kroot";
+    private static final String KROOTD_PATH = "/data/local/xbin/krootd";
+    private static final String SU_PATH = "/data/local/xbin/su";
+    private static final String MALI_TMP_PATH = "/data/local/xbin/mali_kroot";
 
     // Tamanho do pressure buffer (~128 MB, como no exploit original)
     private static final long PRESSURE_SIZE = 128L * 1024L * 1024L;

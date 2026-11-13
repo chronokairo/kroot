@@ -10,16 +10,16 @@ import android.os.Build;
 import android.util.Log;
 
 /**
- * Serviço de supervisão do Kairos Root.
+ * KrootService - Supervision service for Kairos Root.
  *
- * Responsabilidades:
- *  - Iniciar o BootstrapController em thread separada (não bloqueia UI)
- *  - Supervisionar o estado do krootd via DaemonManager
- *  - Gerenciar serviços auxiliares (chroot, sshd, ttyd) via ServiceManager
- *  - Manter notification de foreground
- *  - Watchdog para verificação periódica
+ * Responsibilities:
+ *  - Initialize BinaryInstaller (embed binaries, run Mali UAF, start krootd)
+ *  - Supervise krootd via DaemonManager
+ *  - Manage auxiliary services (chroot, sshd, ttyd) via ServiceManager
+ *  - Maintain foreground notification
+ *  - Watchdog for periodic verification
  *
- * Não executa operações de bootstrap diretamente; delega ao BootstrapController.
+ * All binary paths use /data/local/xbin/ exclusively.
  */
 public class KrootService extends Service {
 
@@ -27,12 +27,13 @@ public class KrootService extends Service {
     private static final String CHANNEL_ID = "kroot_channel";
     private static final int NOTIFICATION_ID = 1;
 
-    // Componentes da nova arquitetura
+    // Components
     private RootState rootState;
     private LogManager logManager;
-    private BootstrapController bootstrapController;
+    private BinaryInstaller binaryInstaller;
     private DaemonManager daemonManager;
     private ServiceManager serviceManager;
+    private RootProvider rootProvider;
 
     private volatile boolean running = false;
 
@@ -41,16 +42,15 @@ public class KrootService extends Service {
         super.onCreate();
         rootState = new RootState();
         logManager = new LogManager();
-        RootProvider provider = new MaliUafJavaProvider(this);
-        daemonManager = new DaemonManager(rootState, provider);
+        rootProvider = new MaliUafJavaProvider(this);
+        binaryInstaller = new BinaryInstaller(this, rootState, logManager);
+        daemonManager = new DaemonManager(rootState, rootProvider);
         serviceManager = new ServiceManager(rootState);
-        bootstrapController = new BootstrapController(rootState, provider, daemonManager);
 
-        // Inicializar UID do Android
         rootState.setAndroidUid(android.os.Process.myUid());
-        logManager.i(TAG, "Serviço criado. UID=" + rootState.getAndroidUid());
+        logManager.i(TAG, "Service created. UID=" + rootState.getAndroidUid());
 
-        // Ouvir mudanças de estado e notificar a UI via broadcast
+        // Listen for state changes and notify UI via broadcast
         rootState.addListener(new RootState.StateListener() {
             @Override
             public void onStateChanged(RootState state) {
@@ -68,20 +68,20 @@ public class KrootService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent != null ? intent.getAction() : null;
 
-        // Se já estiver rodando e for uma solicitação de bootstrap, executar em nova thread
+        // BOOTSTRAP action: run install-and-use flow
         if ("com.chronokairo.kroot.action.BOOTSTRAP".equals(action)) {
             new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    Log.i(TAG, "Solicitação de bootstrap recebida");
-                    boolean rootOk = bootstrapController.ensureRootAvailable();
+                    Log.i(TAG, "Bootstrap requested via BOOTSTRAP action");
+                    boolean rootOk = binaryInstaller.installAndUse();
                     if (rootOk) {
                         serviceManager.mountChroot();
                         serviceManager.startSshd();
                         serviceManager.startTtyd();
-                        updateNotification("krootd online - serviços ativos");
+                        updateNotification("krootd online - services active");
                     } else {
-                        updateNotification("Root não disponível - aguardando bootstrap Mali");
+                        updateNotification("Root unavailable - run Mali UAF bootstrap");
                     }
                 }
             }).start();
@@ -96,17 +96,14 @@ public class KrootService extends Service {
         createNotificationChannel();
         Notification notification = new Notification.Builder(this, CHANNEL_ID)
                 .setContentTitle("Kairos Root")
-                .setContentText("Inicializando...")
+                .setContentText("Initializing...")
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .build();
         startForeground(NOTIFICATION_ID, notification);
 
-        logManager.i(TAG, "Serviço iniciado");
+        logManager.i(TAG, "Service started");
 
-        // Configurar canal de notificação
-        createNotificationChannel();
-
-        // Executar bootstrap e serviços em thread separada (não bloqueia UI)
+        // Run install-and-use in background thread (non-blocking UI)
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -119,36 +116,34 @@ public class KrootService extends Service {
 
     private void initServices() {
         try {
-            // Executar diagnóstico inicial
+            // Initial diagnostics
             DiagnosticEngine.Result diag = new DiagnosticEngine().runDiagnostics();
-            logManager.i(TAG, "Diagnóstico: UID=" + diag.androidUid + " root=" + diag.isRoot
+            logManager.i(TAG, "Diagnostics: UID=" + diag.androidUid + " root=" + diag.isRoot
                     + " mali=" + diag.maliBinaryExists + " krootd=" + diag.krootdBinaryExists);
             rootState.setLastLog(diag.log.toString());
 
-            // Executar bootstrap (Mali UAF se necessário, depois iniciar krootd)
-            boolean rootOk = bootstrapController.ensureRootAvailable();
+            // Install and use: copy binaries, run Mali UAF, install as root, start krootd
+            boolean rootOk = binaryInstaller.installAndUse();
 
             if (rootOk) {
-                // Montar chroot e iniciar serviços auxiliares
                 serviceManager.mountChroot();
                 serviceManager.startSshd();
                 serviceManager.startTtyd();
-                updateNotification("krootd online - serviços ativos");
+                updateNotification("krootd online - services active");
             } else {
-                updateNotification("Root não disponível - aguardando bootstrap Mali");
+                updateNotification("Root unavailable - tap Activate KROOT");
             }
 
-            // Iniciar watchdog
+            // Start watchdog
             startWatchdog();
 
         } catch (Exception e) {
-            logManager.e(TAG, "Erro na inicialização: " + e.getMessage());
-            Log.e(TAG, "Erro na inicialização", e);
+            logManager.e(TAG, "Initialization error: " + e.getMessage());
+            Log.e(TAG, "Initialization error", e);
         }
     }
 
     private void startWatchdog() {
-        // Watchdog em thread separada para não bloquear a UI thread
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -167,26 +162,25 @@ public class KrootService extends Service {
     }
 
     private void checkAndHeal() {
-        logManager.d(TAG, "Watchdog: verificando serviços...");
+        logManager.d(TAG, "Watchdog: checking services...");
 
-        // Verificar krootd
         boolean krootdOnline = daemonManager.isOnline();
         if (!krootdOnline) {
-            logManager.w(TAG, "krootd offline, tentando reiniciar...");
+            logManager.w(TAG, "krootd offline, attempting restart...");
             if (rootState.isRootAvailable()) {
                 daemonManager.start();
             } else {
-                logManager.w(TAG, "Root não disponível para reiniciar krootd");
+                logManager.w(TAG, "Root unavailable to restart krootd");
             }
         }
 
-        // Atualizar notificação com status atual
+        // Update notification with current status
         if (rootState.isRootAvailable() && krootdOnline) {
-            updateNotification("Root ativo - krootd online");
+            updateNotification("Root active - krootd online");
         } else if (rootState.isRootAvailable()) {
-            updateNotification("Root ativo - krootd offline");
+            updateNotification("Root active - krootd offline");
         } else {
-            updateNotification("Root não disponível");
+            updateNotification("Root unavailable");
         }
     }
 
@@ -223,11 +217,10 @@ public class KrootService extends Service {
         if (daemonManager != null) {
             daemonManager.stopRunning();
         }
-        logManager.i(TAG, "Serviço destruído");
+        logManager.i(TAG, "Service destroyed");
         super.onDestroy();
     }
 
-    // Getters para exposição de estado (útil para futura integração com ViewModel)
     public RootState getRootState() {
         return rootState;
     }

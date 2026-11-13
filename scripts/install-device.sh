@@ -1,15 +1,15 @@
 #!/system/bin/sh
-# install-device.sh - instala o Kairos Root no aparelho (rodar como root)
+# install-device.sh - Instala o Kairos Root no aparelho (rodar como root)
+# Todos os caminhos usam /data/local/xbin/ como padrão único.
 set -e
 
 BIN=/data/local/xbin
-TMP=/data/local/tmp
 RUN=/data/local/kroot
 SRC=/data/local/tmp/kroot-build
 
-mkdir -p "$BIN" "$TMP" "$RUN"
+mkdir -p "$BIN" "$RUN"
 chmod 0700 "$RUN"
-chmod 0777 "$TMP"
+chmod 0777 "$TMP" 2>/dev/null || true
 
 # Verificar se estamos rodando como root
 if [ "$(id -u)" != "0" ]; then
@@ -18,17 +18,11 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
-# Instalar binários em /data/local/xbin (root uso)
+# Instalar binários em /data/local/xbin (uso root)
 for f in krootd su krootctl; do
     cp "$SRC/$f" "$BIN/$f"
     chown root:root "$BIN/$f"
     chmod 0755 "$BIN/$f"
-done
-
-# Copiar binários para /data/local/tmp (acessível pelo shell/app sem root)
-for f in krootd su krootctl; do
-    cp "$SRC/$f" "$TMP/$f"
-    chmod 0755 "$TMP/$f"
 done
 
 # policy inicial (idempotente)
@@ -38,7 +32,6 @@ grep -q '^2000' "$RUN/policy.tsv" || printf '2000\tallow\tshell\t0\n' >> "$RUN/p
 grep -q '^10246' "$RUN/policy.tsv" || printf '10246\tallow\ttermux\t0\n' >> "$RUN/policy.tsv"
 
 # Autorizar o pacote Kairos Root (com.chronokairo.kroot) na policy.
-# Descobre o UID dinamicamente via pm. Se falhar, tenta 10260 (exemplo).
 KROOT_UID=$(pm list packages -U com.chronokairo.kroot 2>/dev/null | sed -n 's/.*uid:\([0-9]*\).*/\1/p')
 if [ -n "$KROOT_UID" ]; then
     grep -q "^${KROOT_UID}" "$RUN/policy.tsv" || \
@@ -48,7 +41,7 @@ else
         printf '10260\tallow\tcom.chronokairo.kroot\t0\n' >> "$RUN/policy.tsv"
 fi
 
-# sobe o daemon (só funciona se executado como root)
+# Subir o daemon (só funciona se executado como root)
 if ! "$BIN/krootd" --status; then
     "$BIN/krootd" --daemon
     sleep 1

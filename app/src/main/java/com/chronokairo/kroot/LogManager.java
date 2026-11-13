@@ -40,6 +40,7 @@ public class LogManager {
     public void i(String tag, String msg) { log("I", tag, msg); }
     public void w(String tag, String msg) { log("W", tag, msg); }
     public void e(String tag, String msg) { log("E", tag, msg); }
+    public void e(String tag, String msg, Throwable tr) { log("E", tag, msg + " - " + tr.getMessage()); }
 
     public List<String> getLogs() {
         synchronized (logs) {
