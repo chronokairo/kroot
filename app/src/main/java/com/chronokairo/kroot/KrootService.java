@@ -36,7 +36,7 @@ public class KrootService extends Service {
         Notification notification = new Notification.Builder(this, CHANNEL_ID)
                 .setContentTitle("Kairos Root")
                 .setContentText("krootd + chroot Ubuntu rodando")
-                .setSmallIcon(android.R.id.icon)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .build();
         startForeground(NOTIFICATION_ID, notification);
 

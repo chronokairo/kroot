@@ -108,10 +108,20 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:columnCount="3"
-                android:rowCount="6"
                 android:alignmentMode="alignBounds"
                 android:paddingLeft="4dp"
                 android:paddingRight="4dp"/>
+
+            <!-- Status do sistema (preenchido por checkStatus()) -->
+            <TextView
+                android:id="@+id/status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Inicializando KROOT..."
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:padding="8dp"
+                android:layout_marginTop="8dp"/>
 
             <!-- Botão "Todos os Apps" -->
             <Button

@@ -25,6 +25,8 @@ import java.util.List;
 
 public class MainActivity extends Activity {
 
+    // TODO: validar o caminho de instalação no dispositivo alvo.
+    // README/docs indicam /data/local/xbin/su.kroot; o deploy atual usa /data/local/tmp/kroot-build/su.kroot.
     private static final String SU_KROOT = "/data/local/tmp/kroot-build/su.kroot";
     private static final String CHROOT = "/data/local/ubuntu";
     private static final String POLICY_DIR = "/data/local/kroot";
@@ -181,9 +183,13 @@ public class MainActivity extends Activity {
             String line;
             while ((line = br.readLine()) != null) sb.append(line).append("\n");
             p.waitFor();
-            runOnUiThread(() -> statusView.setText(sb.toString()));
+            if (statusView != null) {
+                runOnUiThread(() -> statusView.setText(sb.toString()));
+            }
         } catch (Exception e) {
-            runOnUiThread(() -> statusView.setText("Erro: " + e.getMessage()));
+            if (statusView != null) {
+                runOnUiThread(() -> statusView.setText("Erro: " + e.getMessage()));
+            }
             Toast.makeText(this, "Erro: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
@@ -212,6 +218,11 @@ public class MainActivity extends Activity {
     }
 
     private void checkStatus() {
+        if (statusView == null) {
+            android.util.Log.e("KROOT", "StatusView não encontrado");
+            return;
+        }
+
         String krootd = captureCmd(new String[]{SU_KROOT, "--status"});
         String uptime = captureCmd(new String[]{SU_KROOT, "-c",
             "chroot " + CHROOT + " /bin/bash -c 'uptime 2>/dev/null || echo n/a'"});
