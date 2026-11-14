@@ -142,3 +142,15 @@ Node.js: v22.23.4
 NPM: 10.9.9
 Python: 3.12.3
 ```
+
+---
+
+## 6. Creditos e ferramentas
+
+- **DeepSeek** — harness de IA usado para chegar ao exploit (analise do driver Mali,
+  primitivas de leitura/escrita fisica e a cadeia de elevacao).
+- **Muse Glimmer 30B** — modelo de linguagem (provider **NVIDIA NIM**) usado junto ao harness.
+- **CreitinGameplays** — [`scripts/mali/mali_kroot.c`](https://github.com/CreitinGameplays/motorola-moto-e32-root/blob/main/scripts/mali/mali_kroot.c)
+  ([motorola-moto-e32-root](https://github.com/CreitinGameplays/motorola-moto-e32-root), MIT):
+  mesma cadeia de exploit (UAF Mali → R/W fisico → patch de `cred`/`selinux_state`) para o
+  **mesmo Moto E32 (hawaii)**, encontrada **depois** desta implementacao.

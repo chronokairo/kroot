@@ -155,7 +155,8 @@ podem funcionar ajustando os offsets do exploit — o `krootd` em si é independ
   ([`scripts/mali/mali_kroot.c`](https://github.com/CreitinGameplays/motorola-moto-e32-root/blob/main/scripts/mali/mali_kroot.c), MIT).
   Encontrado **depois** da nossa implementação — chegou ao mesmo resultado, exatamente para o
   mesmo modelo.
-- Exploit obtido com o harness do **DeepSeek** e o **Glimmer**.
+- Exploit obtido com o harness do **DeepSeek** e o modelo **Muse Glimmer 30B** (provider
+  **NVIDIA NIM**).
 
 ## Licença
 
