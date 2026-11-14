@@ -149,6 +149,13 @@ podem funcionar ajustando os offsets do exploit — o `krootd` em si é independ
   [gist original](https://gist.github.com/lu4nn3ry/b2cb310ecf3530caa3537133bdc647f6)
   (agregado em [`docs/processo-root-e32.md`](docs/processo-root-e32.md))
 - `mali-kroot` — exploit UAF original usado como bootstrap.
+- `mali_kroot.c` — mesma cadeia de exploit (UAF Mali → leitura/escrita física → patch de
+  `cred`/`selinux_state`) para o **mesmo Moto E32 (hawaii)**, por
+  [CreitinGameplays](https://github.com/CreitinGameplays/motorola-moto-e32-root)
+  ([`scripts/mali/mali_kroot.c`](https://github.com/CreitinGameplays/motorola-moto-e32-root/blob/main/scripts/mali/mali_kroot.c), MIT).
+  Encontrado **depois** da nossa implementação — chegou ao mesmo resultado, exatamente para o
+  mesmo modelo.
+- Exploit obtido com o harness do **DeepSeek** e o **Glimmer**.
 
 ## Licença
 
